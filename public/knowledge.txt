@@ -1,0 +1,46 @@
+# About Me
+My name is Mark Vencent Juntilla, also known as Maki. I am a results-driven Social Media Manager, Virtual Assistant, and Web Developer based in the Philippines. I have over 3 years of experience helping businesses grow online. I am currently a 4th-year BSIT student. What sets me apart is my unique blend of creative marketing and deep technical knowledge. I don't just create content that looks good — I understand the data, algorithms, and infrastructure required to make it perform.
+
+# Services
+- Social Media Management: Full-cycle management of Instagram, Facebook, TikTok, and LinkedIn — strategy, content calendars, scheduling, engagement, and monthly reports.
+- Virtual Assistant: Email management, calendar coordination, data entry, research, CRM updates, and day-to-day admin tasks.
+- Web Development: Custom websites built with Next.js, React, and Tailwind CSS — fast, accessible, and SEO-optimised.
+
+# Skills
+Web Development: HTML/CSS, JavaScript, TypeScript, React, Next.js, Tailwind CSS, PostgreSQL, MySQL, PHP, Laravel, Java
+Virtual Assistant: Email Management, Calendar Management, Data Entry, Research, Customer Support, File Management, Content Scheduling, Content Creation
+
+# Tools
+Web Dev: VS Code, GitHub, Vercel, Supabase, Figma
+Virtual Assistant: Notion, Trello, Slack, Google Workspace, ChatGPT, Canva, Zoom
+
+# Location
+Philippines
+
+# Experience
+3+ years of experience in Social Media Management and Virtual Assistance. Background in web development with hands-on project experience building full-stack applications.
+
+# Education
+Currently a 4th-year Bachelor of Science in Information Technology (BSIT) student.
+
+# Contact
+Clients can reach me through the contact form on this website, or via email, Instagram, Facebook, LinkedIn, or phone. All contact details are listed in the About section of this portfolio.
+
+# FAQs
+Q: What services do you offer?
+A: I offer Social Media Management, Virtual Assistance, and Web Development. From managing your brand's social presence to building fast websites, I handle it all.
+
+Q: What is your availability?
+A: I am available for freelance and part-time projects. Feel free to reach out through the contact form to discuss your needs.
+
+Q: How much do you charge?
+A: Pricing depends on the scope of the project. Please contact me directly so we can discuss your requirements and I can provide a custom quote.
+
+Q: Can you build a website for me?
+A: Yes! I specialize in building modern, fast websites using Next.js, React, and Tailwind CSS. Contact me with your project details.
+
+Q: Do you offer content creation?
+A: Yes, content creation is part of my Virtual Assistant and Social Media Management services — including graphics, captions, and scheduling.
+
+Q: Where are you based?
+A: I am based in the Philippines and work with clients remotely worldwide.
