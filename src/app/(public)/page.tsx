@@ -318,9 +318,11 @@ function AboutSec({profile,contacts,resume}:{profile:Profile;contacts:Contact[];
             </div>
           </motion.div>
         </div>
-        <ProfileCard avatar_url={profile.avatar_url} full_name={profile.full_name} resume={resume}/>
+        <div className="about-profile-card">
+          <ProfileCard avatar_url={profile.avatar_url} full_name={profile.full_name} resume={resume}/>
+        </div>
       </div>
-      <style>{`@media(max-width:768px){.about-grid{grid-template-columns:1fr!important}}`}</style>
+      <style>{`@media(max-width:768px){.about-grid{grid-template-columns:1fr!important}.about-profile-card{display:none!important}}`}</style>
     </Sec>
   );
 }
