@@ -586,20 +586,33 @@ export default function Page() {
   const [lb,setLb]=useState<LightboxState>({open:false,image:'',title:'',desc:''});
 
   useEffect(()=>{
+    const safe = (p: Promise<Response>) => p.then(r=>r.ok?r.json():null).catch(()=>null);
     Promise.all([
-      fetch('/api/content/hero').then(r=>r.json()),
-      fetch('/api/profile').then(r=>r.json()),
-      fetch('/api/profile/contacts').then(r=>r.json()),
-      fetch('/api/profile/resume').then(r=>r.json()),
-      fetch('/api/services').then(r=>r.json()),
-      fetch('/api/skills').then(r=>r.json()),
-      fetch('/api/tools').then(r=>r.json()),
-      fetch('/api/projects').then(r=>r.json()),
-      fetch('/api/gallery').then(r=>r.json()),
-      fetch('/api/testimonials').then(r=>r.json()),
-      fetch('/api/certifications').then(r=>r.json()),
+      safe(fetch('/api/content/hero')),
+      safe(fetch('/api/profile')),
+      safe(fetch('/api/profile/contacts')),
+      safe(fetch('/api/profile/resume')),
+      safe(fetch('/api/services')),
+      safe(fetch('/api/skills')),
+      safe(fetch('/api/tools')),
+      safe(fetch('/api/projects')),
+      safe(fetch('/api/gallery')),
+      safe(fetch('/api/testimonials')),
+      safe(fetch('/api/certifications')),
     ]).then(([hero,profile,contacts,resume,services,skills,tools,projects,gallery,testimonials,certs])=>{
-      setData({hero,profile,contacts,resume,services,skills,tools,projects,gallery,testimonials,certs});
+      setData({
+        hero: hero ?? {headline:'',subheadline:'',cta_text:'',cta_url:'',bg_image_url:null},
+        profile: profile ?? {full_name:'',tagline:'',bio:'',avatar_url:null,location:'',years_experience:0},
+        contacts: contacts ?? [],
+        resume: resume ?? null,
+        services: services ?? [],
+        skills: skills ?? [],
+        tools: tools ?? [],
+        projects: projects ?? [],
+        gallery: gallery ?? [],
+        testimonials: testimonials ?? [],
+        certs: certs ?? [],
+      });
     });
   },[]);
 
