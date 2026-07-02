@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 
 export async function GET() {
-  const { rows } = await pool.query('SELECT * FROM hero WHERE id=1');
-  return NextResponse.json(rows[0] ?? {});
+  try {
+    const { rows } = await pool.query('SELECT * FROM hero WHERE id=1');
+    return NextResponse.json(rows[0] ?? {});
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function PUT(req: NextRequest) {
