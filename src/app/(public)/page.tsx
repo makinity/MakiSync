@@ -69,7 +69,7 @@ function DotCanvas() {
 }
 
 // ── Navbar ───────────────────────────────────────────────
-const NAV = ['about','services','skills','tools','projects','gallery','testimonials','certifications','contact'];
+const NAV = ['about','services','skills','tools','projects','gallery','resume','certifications','contact'];
 
 function Navbar() {
   const {scrollY}=useScroll();
@@ -400,7 +400,7 @@ function GallerySec({items,lb}:{items:GalleryItem[];lb:(s:LightboxState)=>void})
   const filtered=cat?items.filter(g=>g.category_name===cat):items;
   return (
     <Sec id="gallery">
-      <SectionTitle label="Gallery" title="Visual Work" sub="Collection of content and campaigns"/>
+      <SectionTitle label="Gallery" title="Photos of Me" sub="A glimpse into my life and moments"/>
       {cats.length>0&&<div style={{display:'flex',gap:8,marginBottom:28,flexWrap:'wrap'}}>
         <button onClick={()=>setCat('')} style={{padding:'6px 16px',borderRadius:99,border:`1px solid ${cat===''?'var(--admin-accent)':'var(--admin-border)'}`,background:cat===''?'rgba(59,130,246,0.12)':'transparent',color:cat===''?'var(--admin-accent)':'var(--admin-text-muted)',fontSize:'0.8rem',fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>All</button>
         {cats.map(c=><button key={c} onClick={()=>setCat(c===cat?'':c)} style={{padding:'6px 16px',borderRadius:99,border:`1px solid ${cat===c?'var(--admin-accent)':'var(--admin-border)'}`,background:cat===c?'rgba(59,130,246,0.12)':'transparent',color:cat===c?'var(--admin-accent)':'var(--admin-text-muted)',fontSize:'0.8rem',fontWeight:600,cursor:'pointer',fontFamily:'inherit',textTransform:'capitalize'}}>{c}</button>)}
@@ -420,33 +420,37 @@ function GallerySec({items,lb}:{items:GalleryItem[];lb:(s:LightboxState)=>void})
   );
 }
 
-// ── Testimonials ─────────────────────────────────────────
-function TestimonialsSec({items}:{items:Testimonial[]}) {
-  const pub=items.filter(t=>t.is_published);
-  if(!pub.length) return null;
+// ── Resume ───────────────────────────────────────────────
+function ResumeSec({resume}:{resume:Resume|null}) {
+  if(!resume) return null;
   return (
-    <Sec id="testimonials">
-      <SectionTitle label="Social Proof" title="Client Testimonials" sub="What people say about working with me"/>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:24}}>
-        {pub.map((t,i)=>(
-          <motion.div key={t.id} {...fadeUp} transition={{...fadeUp.transition,delay:i*0.08}} style={{padding:24,background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:14}}>
-            <div style={{fontSize:22,color:'var(--admin-accent)',marginBottom:12}}><i className="bi bi-quote"/></div>
-            <p style={{fontSize:'0.92rem',color:'var(--admin-text-secondary)',lineHeight:1.65,marginBottom:16,fontStyle:'italic'}}>"{t.message}"</p>
-            <div style={{display:'flex',gap:2,marginBottom:12}}>
-              {Array.from({length:t.rating}).map((_,i)=><i key={i} className="bi bi-star-fill" style={{color:'#facc15',fontSize:12}}/>)}
+    <Sec id="resume">
+      <SectionTitle label="Resume" title={resume.title||'My Resume'} sub={resume.description||undefined}/>
+      <motion.div {...fadeUp} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:32}}>
+        {resume.file_url&&(
+          <>
+            <div style={{width:'100%',maxWidth:800,borderRadius:16,overflow:'hidden',border:'1px solid var(--admin-border)',boxShadow:'var(--admin-shadow)',background:'var(--admin-card)'}}>
+              <iframe
+                src={`${resume.file_url}#toolbar=0&navpanes=0&scrollbar=0`}
+                style={{width:'100%',height:700,border:'none',display:'block'}}
+                title="Resume Preview"
+              />
             </div>
-            <div style={{display:'flex',gap:12,alignItems:'center',borderTop:'1px solid var(--admin-border)',paddingTop:14}}>
-              <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'rgba(59,130,246,0.1)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {t.client_avatar_url?<img src={t.client_avatar_url} alt={t.client_name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<i className="bi bi-person-fill" style={{color:'var(--admin-accent)'}}/>}
-              </div>
-              <div>
-                <div style={{fontSize:'0.88rem',fontWeight:700,color:'var(--admin-text-primary)'}}>{t.client_name}</div>
-                {t.client_title&&<div style={{fontSize:'0.75rem',color:'var(--admin-text-muted)'}}>{t.client_title}</div>}
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+            <motion.a
+              href={resume.file_url}
+              target="_blank"
+              rel="noreferrer"
+              download
+              whileHover={{scale:1.03,y:-2}}
+              whileTap={{scale:0.98}}
+              style={{display:'inline-flex',alignItems:'center',gap:10,padding:'13px 32px',background:'var(--admin-accent)',color:'#fff',borderRadius:12,textDecoration:'none',fontSize:'0.95rem',fontWeight:700,boxShadow:'var(--admin-shadow)'}}
+            >
+              <i className="bi bi-download"/>
+              Download Resume
+            </motion.a>
+          </>
+        )}
+      </motion.div>
     </Sec>
   );
 }
@@ -584,7 +588,7 @@ function Lightbox({state,onClose}:{state:LightboxState;onClose:()=>void}) {
 
 // ── Main Page ────────────────────────────────────────────
 export default function Page() {
-  const [data,setData]=useState<{hero:Hero;profile:Profile;contacts:Contact[];resume:Resume|null;services:Service[];skills:Skill[];tools:Skill[];projects:Project[];gallery:GalleryItem[];testimonials:Testimonial[];certs:Certification[]}|null>(null);
+  const [data,setData]=useState<{hero:Hero;profile:Profile;contacts:Contact[];resume:Resume|null;services:Service[];skills:Skill[];tools:Skill[];projects:Project[];gallery:GalleryItem[];certs:Certification[]}|null>(null);
   const [lb,setLb]=useState<LightboxState>({open:false,image:'',title:'',desc:''});
 
   useEffect(()=>{
@@ -599,9 +603,8 @@ export default function Page() {
       safe(fetch('/api/tools')),
       safe(fetch('/api/projects')),
       safe(fetch('/api/gallery')),
-      safe(fetch('/api/testimonials')),
       safe(fetch('/api/certifications')),
-    ]).then(([hero,profile,contacts,resume,services,skills,tools,projects,gallery,testimonials,certs])=>{
+    ]).then(([hero,profile,contacts,resume,services,skills,tools,projects,gallery,certs])=>{
       setData({
         hero: hero ?? {headline:'',subheadline:'',cta_text:'',cta_url:'',bg_image_url:null},
         profile: profile ?? {full_name:'',tagline:'',bio:'',avatar_url:null,location:'',years_experience:0},
@@ -612,7 +615,6 @@ export default function Page() {
         tools: tools ?? [],
         projects: projects ?? [],
         gallery: gallery ?? [],
-        testimonials: testimonials ?? [],
         certs: certs ?? [],
       });
     });
@@ -637,7 +639,7 @@ export default function Page() {
     </>
   );
 
-  const {hero,profile,contacts,resume,services,skills,tools,projects,gallery,testimonials,certs}=data;
+  const {hero,profile,contacts,resume,services,skills,tools,projects,gallery,certs}=data;
 
   return (
     <main style={{position:'relative',overflow:'hidden'}}>
@@ -650,7 +652,7 @@ export default function Page() {
       {tools.length>0&&<SkillGrid id="tools" label="Tools" title="Tools I Use" items={tools}/>}
       {projects.length>0&&<ProjectsSec items={projects} lb={setLb}/>}
       {gallery.length>0&&<GallerySec items={gallery} lb={setLb}/>}
-      <TestimonialsSec items={testimonials}/>
+      <ResumeSec resume={resume}/>
       {certs.length>0&&<CertsSec items={certs} lb={setLb}/>}
       <ContactSec contacts={contacts}/>
       <Footer siteName={hero.headline?'MakiSync':profile.full_name||'MakiSync'} contacts={contacts}/>
