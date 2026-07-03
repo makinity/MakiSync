@@ -423,21 +423,25 @@ function GallerySec({items,lb}:{items:GalleryItem[];lb:(s:LightboxState)=>void})
 // ── Resume ───────────────────────────────────────────────
 function ResumeSec({resume}:{resume:Resume|null}) {
   if(!resume) return null;
+  const previewUrl = resume.file_url
+    ? `https://docs.google.com/gview?url=${encodeURIComponent(resume.file_url)}&embedded=true`
+    : null;
   return (
     <Sec id="resume">
       <SectionTitle label="Resume" title={resume.title||'My Resume'} sub={resume.description||undefined}/>
       <motion.div {...fadeUp} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:32}}>
-        {resume.file_url&&(
+        {previewUrl&&(
           <>
-            <div style={{width:'100%',maxWidth:800,borderRadius:16,overflow:'hidden',border:'1px solid var(--admin-border)',boxShadow:'var(--admin-shadow)',background:'var(--admin-card)'}}>
+            <div style={{width:'100%',maxWidth:860,borderRadius:16,overflow:'hidden',border:'1px solid var(--admin-border)',boxShadow:'var(--admin-shadow)',background:'var(--admin-card)'}}>
               <iframe
-                src={`${resume.file_url}#toolbar=0&navpanes=0&scrollbar=0`}
-                style={{width:'100%',height:700,border:'none',display:'block'}}
+                src={previewUrl}
+                style={{width:'100%',height:720,border:'none',display:'block'}}
                 title="Resume Preview"
+                loading="lazy"
               />
             </div>
             <motion.a
-              href={resume.file_url}
+              href={resume.file_url!}
               target="_blank"
               rel="noreferrer"
               download
