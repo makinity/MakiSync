@@ -126,15 +126,17 @@ function AboutTab() {
 
 // ── Resume Tab ─────────────────────────────────────────────
 function ResumeTab() {
-  const [form, setForm] = useState({ title: '', description: '', file_url: '' });
+  const [form, setForm] = useState({ title: '', description: '', file_url: '', thumbnail_url: '' });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingThumb, setUploadingThumb] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const thumbRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch('/api/profile/resume').then(r => r.json()).then(d => {
-      setForm({ title: d.title ?? '', description: d.description ?? '', file_url: d.file_url ?? '' });
+      setForm({ title: d.title ?? '', description: d.description ?? '', file_url: d.file_url ?? '', thumbnail_url: d.thumbnail_url ?? '' });
     });
   }, []);
 
@@ -148,6 +150,18 @@ function ResumeTab() {
     const data = await res.json();
     if (data.url) setForm(p => ({ ...p, file_url: data.url }));
     setUploading(false);
+  };
+
+  const handleThumbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingThumb(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/api/profile/resume-thumbnail', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.url) setForm(p => ({ ...p, thumbnail_url: data.url + '?t=' + Date.now() }));
+    setUploadingThumb(false);
   };
 
   const handleSave = async () => {
@@ -184,6 +198,24 @@ function ResumeTab() {
             <input ref={fileRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={handleFileUpload} />
           </div>
           {form.file_url && <div style={{ fontSize: '0.7rem', color: 'var(--admin-text-muted)', marginTop: '0.35rem', wordBreak: 'break-all' }}>{form.file_url}</div>}
+        </div>
+        <div>
+          <label style={labelStyle}>Thumbnail Image</label>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            {form.thumbnail_url && (
+              <div style={{ width: 120, height: 160, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--admin-border)', flexShrink: 0 }}>
+                <img src={form.thumbnail_url} alt="Resume thumbnail" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', justifyContent: 'center' }}>
+              <button onClick={() => thumbRef.current?.click()} disabled={uploadingThumb} style={{ padding: '0.5rem 1rem', borderRadius: 8, border: '1px solid var(--admin-border-strong)', background: 'transparent', color: 'var(--admin-text-secondary)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                <i className="bi bi-image" style={{ marginRight: '0.4rem' }} />
+                {uploadingThumb ? 'Uploading…' : form.thumbnail_url ? 'Replace Thumbnail' : 'Upload Thumbnail'}
+              </button>
+              <div style={{ fontSize: '0.7rem', color: 'var(--admin-text-muted)' }}>JPG, PNG or WebP. Shown as preview on the public page.</div>
+              <input ref={thumbRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handleThumbUpload} />
+            </div>
+          </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem' }}>
           {saved && <span style={{ fontSize: '0.8rem', color: '#4ade80' }}>✓ Saved</span>}

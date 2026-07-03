@@ -6,7 +6,7 @@ import { motion, useScroll, useMotionValue, useTransform, useSpring } from 'fram
 type Hero    = { headline:string; subheadline:string; cta_text:string; cta_url:string; bg_image_url:string|null };
 type Profile = { full_name:string; tagline:string; bio:string; avatar_url:string|null; location:string; years_experience:number };
 type Contact = { key:string; label:string; value:string };
-type Resume  = { title:string; description:string; file_url:string|null };
+type Resume  = { title:string; description:string; file_url:string|null; thumbnail_url:string|null };
 type Service = { id:number; title:string; description:string; icon:string };
 type Skill   = { id:number; name:string; logo_url:string|null; category:string };
 type Project = { id:number; title:string; description:string; cover_url:string|null; client:string|null; url:string|null; status:string };
@@ -423,36 +423,38 @@ function GallerySec({items,lb}:{items:GalleryItem[];lb:(s:LightboxState)=>void})
 // ── Resume ───────────────────────────────────────────────
 function ResumeSec({resume}:{resume:Resume|null}) {
   if(!resume) return null;
-  const previewUrl = resume.file_url
-    ? `https://docs.google.com/gview?url=${encodeURIComponent(resume.file_url)}&embedded=true`
-    : null;
   return (
     <Sec id="resume">
       <SectionTitle label="Resume" title={resume.title||'My Resume'} sub={resume.description||undefined}/>
-      <motion.div {...fadeUp} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:32}}>
-        {previewUrl&&(
-          <>
-            <div style={{width:'100%',maxWidth:860,borderRadius:16,overflow:'hidden',border:'1px solid var(--admin-border)',boxShadow:'var(--admin-shadow)',background:'var(--admin-card)'}}>
-              <iframe
-                src={previewUrl}
-                style={{width:'100%',height:720,border:'none',display:'block'}}
-                title="Resume Preview"
-                loading="lazy"
-              />
-            </div>
-            <motion.a
-              href={resume.file_url!}
-              target="_blank"
-              rel="noreferrer"
-              download
-              whileHover={{scale:1.03,y:-2}}
-              whileTap={{scale:0.98}}
-              style={{display:'inline-flex',alignItems:'center',gap:10,padding:'13px 32px',background:'var(--admin-accent)',color:'#fff',borderRadius:12,textDecoration:'none',fontSize:'0.95rem',fontWeight:700,boxShadow:'var(--admin-shadow)'}}
-            >
-              <i className="bi bi-download"/>
-              Download Resume
-            </motion.a>
-          </>
+      <motion.div {...fadeUp} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:28}}>
+        {resume.thumbnail_url&&(
+          <motion.div
+            whileHover={{scale:1.02,y:-4}}
+            transition={{type:'spring',stiffness:300,damping:20}}
+            style={{borderRadius:16,overflow:'hidden',border:'1px solid var(--admin-border)',boxShadow:'var(--admin-shadow)',maxWidth:480,width:'100%'}}
+          >
+            <img src={resume.thumbnail_url} alt={resume.title||'Resume'} style={{width:'100%',display:'block',objectFit:'cover'}}/>
+          </motion.div>
+        )}
+        {!resume.thumbnail_url&&(
+          <div style={{width:200,height:260,borderRadius:16,border:'1px solid var(--admin-border)',background:'var(--admin-card)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12,color:'var(--admin-text-muted)'}}>
+            <i className="bi bi-file-earmark-text" style={{fontSize:'3rem',color:'var(--admin-accent)',opacity:0.5}}/>
+            <span style={{fontSize:'0.82rem'}}>No thumbnail yet</span>
+          </div>
+        )}
+        {resume.file_url&&(
+          <motion.a
+            href={resume.file_url}
+            target="_blank"
+            rel="noreferrer"
+            download
+            whileHover={{scale:1.03,y:-2}}
+            whileTap={{scale:0.98}}
+            style={{display:'inline-flex',alignItems:'center',gap:10,padding:'13px 32px',background:'var(--admin-accent)',color:'#fff',borderRadius:12,textDecoration:'none',fontSize:'0.95rem',fontWeight:700,boxShadow:'var(--admin-shadow)'}}
+          >
+            <i className="bi bi-download"/>
+            Download Resume
+          </motion.a>
         )}
       </motion.div>
     </Sec>
