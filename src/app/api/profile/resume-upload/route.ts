@@ -12,14 +12,14 @@ export async function POST(req: NextRequest) {
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const path = 'resumes/resume.pdf';
+  const path = 'resume.pdf';
 
   const { error } = await supabase.storage
-    .from('profiles')
+    .from('resume')
     .upload(path, buffer, { upsert: true, contentType: 'application/pdf' });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const { data } = supabase.storage.from('profiles').getPublicUrl(path);
+  const { data } = supabase.storage.from('resume').getPublicUrl(path);
   return NextResponse.json({ url: data.publicUrl });
 }
