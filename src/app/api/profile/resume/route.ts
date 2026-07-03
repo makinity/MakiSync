@@ -10,10 +10,16 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   const { title, description, file_url, thumbnail_url } = await req.json();
+  // Only update file_url/thumbnail_url if a non-empty value is provided, otherwise keep existing
   const { rows } = await pool.query(
-    `UPDATE resume SET title=$1, description=$2, file_url=$3, thumbnail_url=$4, updated_at=NOW()
+    `UPDATE resume SET
+      title=$1,
+      description=$2,
+      file_url=CASE WHEN $3::text IS NOT NULL AND $3::text <> '' THEN $3::text ELSE file_url END,
+      thumbnail_url=CASE WHEN $4::text IS NOT NULL AND $4::text <> '' THEN $4::text ELSE thumbnail_url END,
+      updated_at=NOW()
      WHERE id=1 RETURNING title, description, file_url, thumbnail_url, updated_at`,
-    [title || null, description || null, file_url || null, thumbnail_url || null]
+    [title || null, description || null, file_url ?? null, thumbnail_url ?? null]
   );
   return NextResponse.json(rows[0]);
 }

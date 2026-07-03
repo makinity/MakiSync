@@ -146,9 +146,23 @@ function ResumeTab() {
     setUploading(true);
     const fd = new FormData();
     fd.append('file', file);
-    const res = await fetch('/api/profile/resume-upload', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.url) setForm(p => ({ ...p, file_url: data.url }));
+    try {
+      const res = await fetch('/api/profile/resume-upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.url) {
+        setForm(p => ({ ...p, file_url: data.url }));
+        // Auto-save immediately after upload so URL is never lost
+        await fetch('/api/profile/resume', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...form, file_url: data.url }),
+        });
+      } else {
+        alert('Upload failed: ' + (data.error ?? 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Upload error: ' + err);
+    }
     setUploading(false);
   };
 
