@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { href: '/admin/certifications', label: 'Certifications', icon: 'bi-award-fill' },
   { href: '/admin/content',        label: 'Content',        icon: 'bi-file-earmark-richtext-fill' },
   { href: '/admin/messages',       label: 'Messages',       icon: 'bi-envelope-fill' },
+  { href: '/admin/jobhunter',      label: 'JobHunter AI',   icon: 'bi-search-heart' },
   { href: '/admin/settings',       label: 'Settings',       icon: 'bi-gear-fill' },
 ];
 
