@@ -10,12 +10,15 @@ const supabase = createClient(
 );
 
 const BUCKETS = [
-  { name: 'profiles',       public: true,  mimeTypes: ['image/jpeg','image/png','image/webp','application/pdf'], size: 10 },
-  { name: 'projects',       public: true,  mimeTypes: ['image/jpeg','image/png','image/webp'], size: 10 },
-  { name: 'gallery',        public: true,  mimeTypes: ['image/jpeg','image/png','image/webp'], size: 20 },
-  { name: 'certifications', public: true,  mimeTypes: ['image/jpeg','image/png','image/webp'], size: 5  },
-  { name: 'testimonials',   public: true,  mimeTypes: ['image/jpeg','image/png','image/webp'], size: 5  },
-  { name: 'general',        public: true,  mimeTypes: ['image/jpeg','image/png','image/webp','image/svg+xml','image/x-icon'], size: 5 },
+  { name: 'profiles',              public: true,  mimeTypes: ['image/jpeg','image/png','image/webp','application/pdf'], size: 10 },
+  { name: 'projects',              public: true,  mimeTypes: ['image/jpeg','image/png','image/webp'], size: 10 },
+  { name: 'gallery',               public: true,  mimeTypes: ['image/jpeg','image/png','image/webp'], size: 20 },
+  { name: 'certifications',        public: true,  mimeTypes: ['image/jpeg','image/png','image/webp'], size: 5  },
+  { name: 'testimonials',          public: true,  mimeTypes: ['image/jpeg','image/png','image/webp'], size: 5  },
+  { name: 'general',               public: true,  mimeTypes: ['image/jpeg','image/png','image/webp','image/svg+xml','image/x-icon'], size: 5 },
+  // Client Portal buckets
+  { name: 'client-content-media',  public: false, mimeTypes: ['image/jpeg','image/png','image/webp','image/gif','video/mp4','video/quicktime','video/webm'], size: 50 },
+  { name: 'client-assets',         public: false, mimeTypes: ['image/jpeg','image/png','image/webp','image/gif','image/svg+xml','video/mp4','video/quicktime','video/webm','application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'], size: 50 },
 ];
 
 for (const b of BUCKETS) {

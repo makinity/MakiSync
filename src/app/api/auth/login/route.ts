@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { rows } = await pool.query(
-    'SELECT id, username, password_hash FROM users WHERE username = $1 LIMIT 1',
+    'SELECT id, username, password_hash, role FROM users WHERE username = $1 LIMIT 1',
     [username]
   );
 
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   clearAttempts(ip);
 
-  const token = await signToken({ id: user.id, username: user.username });
+  const token = await signToken({ id: user.id, username: user.username, role: user.role });
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(COOKIE_NAME, token, {

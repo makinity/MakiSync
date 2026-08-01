@@ -7,17 +7,25 @@ const COOKIE_NAME = 'ms_session';
 export const hashPassword = (password: string) => bcrypt.hash(password, 12);
 export const verifyPassword = (password: string, hash: string) => bcrypt.compare(password, hash);
 
-export async function signToken(payload: { id: number; username: string }) {
-  return new SignJWT(payload)
+export type UserRole = 'admin' | 'client';
+
+export interface TokenPayload {
+  id: number;
+  username: string;
+  role: UserRole;
+}
+
+export async function signToken(payload: TokenPayload) {
+  return new SignJWT(payload as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('7d')
     .sign(JWT_SECRET);
 }
 
-export async function verifyToken(token: string) {
+export async function verifyToken(token: string): Promise<TokenPayload | null> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET);
-    return payload as { id: number; username: string };
+    return payload as unknown as TokenPayload;
   } catch {
     return null;
   }

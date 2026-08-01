@@ -142,7 +142,11 @@ export default function LoginPage() {
       return;
     }
     showLoginLoader();
-    router.push('/admin/dashboard');
+    // Fetch user role from /api/auth/me to determine redirect
+    const meRes = await fetch('/api/auth/me');
+    const meData = await meRes.json();
+    const redirectPath = meData?.role === 'client' ? '/dashboard' : '/admin/dashboard';
+    router.push(redirectPath);
   };
 
   const inputStyle = (hasError: boolean): React.CSSProperties => ({
