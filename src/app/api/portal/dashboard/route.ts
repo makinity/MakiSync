@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
   );
 
   // Unread messages for this user
-  const msgParams = clientId ? [user.id, clientId] : [user.id, null];
+  const msgParams: (string | number | null)[] = clientId ? [user.id, clientId] : [user.id, null];
   const unreadQuery = clientId
     ? `SELECT COUNT(*)::int AS count FROM portal_messages WHERE is_read = false AND sender_id != $1 AND client_id = $2`
     : `SELECT 0::int AS count`;
