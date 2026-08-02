@@ -315,6 +315,37 @@ export default function LoginPage() {
             position: 'absolute', inset: 0, width: '100%', height: '100%',
             pointerEvents: 'none', zIndex: 0,
           }} />
+
+          {/* Home button — top-left of right panel */}
+          <a
+            href="/"
+            title="Back to Home"
+            style={{
+              position: 'absolute', top: '1.25rem', left: '1.25rem', zIndex: 2,
+              display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+              padding: '0.4rem 0.85rem', borderRadius: 8,
+              border: '1px solid rgba(140,171,214,0.25)',
+              background: 'rgba(255,255,255,0.07)',
+              backdropFilter: 'blur(8px)',
+              color: 'var(--admin-text-secondary)',
+              fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.color = 'var(--admin-accent)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'var(--admin-accent)';
+              (e.currentTarget as HTMLElement).style.background = 'rgba(59,130,246,0.1)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.color = 'var(--admin-text-secondary)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(140,171,214,0.25)';
+              (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.07)';
+            }}
+          >
+            <i className="bi bi-arrow-left" style={{ fontSize: '0.75rem' }} />
+            Home
+          </a>
+
           <div className="login-card" style={{ position: 'relative', zIndex: 1 }}>
             {/* Header */}
             <div style={{ marginBottom: '1.5rem' }}>

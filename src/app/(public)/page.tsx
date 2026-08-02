@@ -109,7 +109,7 @@ function Navbar() {
             </button>
           ))}
         </div>
-        {/* Theme toggle + Hamburger — right side */}
+        {/* Theme toggle + Login + Hamburger — right side */}
         <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:10}}>
           <button onClick={toggle} style={{width:48,height:26,borderRadius:99,border:'none',cursor:'pointer',background:dark?'var(--admin-accent)':'#cbd5e1',transition:'background 0.2s',display:'flex',alignItems:'center',padding:'0 3px',flexShrink:0}} title={dark?'Switch to light':'Switch to dark'}>
             <motion.span animate={{x:dark?22:0}} transition={{type:'spring',stiffness:500,damping:30}} style={{width:20,height:20,borderRadius:'50%',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
@@ -119,6 +119,10 @@ function Navbar() {
               }
             </motion.span>
           </button>
+          <a href="/login" className="nav-login" style={{display:'flex',alignItems:'center',gap:'0.35rem',padding:'0.35rem 0.85rem',borderRadius:8,border:'1px solid var(--admin-border-strong)',background:'transparent',color:'var(--admin-text-secondary)',fontSize:'0.8rem',fontWeight:600,textDecoration:'none',transition:'all 0.2s',flexShrink:0}}>
+            <i className="bi bi-box-arrow-in-right" style={{fontSize:'0.8rem'}}/>
+            Login
+          </a>
           <button className="nav-hamburger" onClick={()=>setOpen(o=>!o)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--admin-text-primary)',fontSize:22,display:'none',padding:'4px 6px',alignItems:'center'}}>
             <i className={`bi ${open?'bi-x':'bi-list'}`}/>
           </button>
@@ -128,6 +132,12 @@ function Navbar() {
         @media(max-width:768px){
           .nav-links{display:none!important}
           .nav-hamburger{display:flex!important;align-items:center}
+          .nav-login{display:none!important}
+        }
+        .nav-login:hover{
+          color:var(--admin-accent)!important;
+          border-color:var(--admin-accent)!important;
+          background:rgba(59,130,246,0.08)!important;
         }
       `}</style>
       {/* Mobile drawer overlay */}
@@ -466,12 +476,12 @@ function CertsSec({items,lb}:{items:Certification[];lb:(s:LightboxState)=>void})
   return (
     <Sec id="certifications">
       <SectionTitle label="Credentials" title="Certifications" sub="Professional qualifications and achievements"/>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:24}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(360px,1fr))',gap:24}}>
         {items.map((c,i)=>{
           const exp=isExpired(c.expiry_date);
           return (
             <motion.div key={c.id} {...fadeUp} transition={{...fadeUp.transition,delay:i*0.08}} style={{background:'var(--admin-card)',border:`1px solid ${exp?'rgba(248,113,113,0.25)':'var(--admin-border)'}`,borderRadius:14,overflow:'hidden'}}>
-              <div onClick={()=>c.image_url&&lb({open:true,image:c.image_url,title:c.title,desc:c.issuer||''})} style={{width:'100%',paddingBottom:'56.25%',position:'relative',background:'var(--admin-bg-secondary)',cursor:c.image_url?'zoom-in':'default'}}>
+              <div onClick={()=>c.image_url&&lb({open:true,image:c.image_url,title:c.title,desc:c.issuer||''})} style={{width:'100%',paddingBottom:'72%',position:'relative',background:'var(--admin-bg-secondary)',cursor:c.image_url?'zoom-in':'default'}}>
                 {c.image_url&&<img src={c.image_url} alt={c.title} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}} loading="lazy"/>}
                 {!c.image_url&&<div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}><i className="bi bi-award-fill" style={{fontSize:'2.5rem',color:'rgba(59,130,246,0.2)'}}/></div>}
                 {exp&&<div style={{position:'absolute',top:8,right:8,background:'rgba(239,68,68,0.9)',color:'#fff',padding:'3px 10px',borderRadius:99,fontSize:'0.65rem',fontWeight:700}}>EXPIRED</div>}
