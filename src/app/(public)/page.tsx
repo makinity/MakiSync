@@ -69,7 +69,7 @@ function DotCanvas() {
 }
 
 // ── Navbar ───────────────────────────────────────────────
-const NAV = ['about','services','skills','tools','projects','gallery','resume','certifications','contact'];
+const NAV = ['about','services','skills','tools','projects','gallery','testimonials','resume','certifications','contact'];
 
 function Navbar() {
   const {scrollY}=useScroll();
@@ -493,6 +493,48 @@ function CertsSec({items,lb}:{items:Certification[];lb:(s:LightboxState)=>void})
   );
 }
 
+// ── Testimonials ─────────────────────────────────────────
+function TestimonialsSec({items}:{items:Testimonial[]}) {
+  if(items.length===0) return null;
+  return (
+    <Sec id="testimonials">
+      <SectionTitle label="Testimonials" title="What Clients Say" sub="Feedback from people I've worked with"/>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:24}}>
+        {items.map((t,i)=>(
+          <motion.div key={t.id} {...fadeUp} transition={{...fadeUp.transition,delay:i*0.07}}
+            style={{background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:14,padding:'1.5rem',display:'flex',flexDirection:'column',gap:'0.85rem'}}>
+            {/* Quote icon */}
+            <i className="bi bi-quote" style={{fontSize:'1.8rem',color:'var(--admin-accent)',opacity:0.5,lineHeight:1}}/>
+            {/* Message */}
+            <p style={{fontSize:'0.9rem',color:'var(--admin-text-secondary)',lineHeight:1.7,fontStyle:'italic',flex:1,margin:0}}>
+              &ldquo;{t.message}&rdquo;
+            </p>
+            {/* Stars */}
+            <div style={{display:'flex',gap:'0.2rem'}}>
+              {[1,2,3,4,5].map(s=>(
+                <i key={s} className={`bi bi-star${s<=t.rating?'-fill':''}`}
+                  style={{color:s<=t.rating?'#facc15':'var(--admin-border-strong)',fontSize:'0.85rem'}}/>
+              ))}
+            </div>
+            {/* Author */}
+            <div style={{display:'flex',alignItems:'center',gap:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid var(--admin-border)'}}>
+              <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'rgba(59,130,246,0.1)',border:'2px solid rgba(59,130,246,0.2)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {t.client_avatar_url
+                  ?<img src={t.client_avatar_url} alt={t.client_name} style={{width:'100%',height:'100%',objectFit:'cover'}} loading="lazy"/>
+                  :<i className="bi bi-person-fill" style={{color:'var(--admin-accent)',fontSize:'1.1rem'}}/>}
+              </div>
+              <div>
+                <div style={{fontSize:'0.88rem',fontWeight:700,color:'var(--admin-text-primary)'}}>{t.client_name}</div>
+                {t.client_title&&<div style={{fontSize:'0.72rem',color:'var(--admin-text-muted)'}}>{t.client_title}</div>}
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </Sec>
+  );
+}
+
 // ── Contact ──────────────────────────────────────────────
 function ContactSec({contacts}:{contacts:Contact[]}) {
   const [form,setForm]=useState({name:'',email:'',subject:'',message:''});
@@ -514,7 +556,7 @@ function ContactSec({contacts}:{contacts:Contact[]}) {
       <motion.div {...fadeUp} className="contact-grid" style={{display:'grid',gridTemplateColumns:'1fr 1.4fr',gap:48}}>
         <div>
           <h3 style={{fontSize:'1rem',fontWeight:700,color:'var(--admin-text-primary)',marginBottom:20}}>Contact Information</h3>
-          {contacts.filter(c=>c.value).map(c=>(
+          {contacts.filter(c=>c.value&&c.key!=='website').map(c=>(
             <motion.a key={c.key} href={c.key==='email'?`mailto:${c.value}`:c.value} target="_blank" rel="noreferrer" whileHover={{x:6}} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12,padding:'10px 14px',background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:10,textDecoration:'none',color:'var(--admin-text-primary)',transition:'all 0.2s'}}>
               <i className={`bi ${socialIconMap[c.key]||'bi-link-45deg'}`} style={{fontSize:18,color:'var(--admin-accent)',flexShrink:0}}/>
               <div><div style={{fontSize:'0.7rem',fontWeight:700,textTransform:'uppercase',color:'var(--admin-text-muted)'}}>{c.label}</div><div style={{fontSize:'0.88rem',fontWeight:600}}>{c.value}</div></div>
@@ -594,7 +636,7 @@ function Lightbox({state,onClose}:{state:LightboxState;onClose:()=>void}) {
 
 // ── Main Page ────────────────────────────────────────────
 export default function Page() {
-  const [data,setData]=useState<{hero:Hero;profile:Profile;contacts:Contact[];resume:Resume|null;services:Service[];skills:Skill[];tools:Skill[];projects:Project[];gallery:GalleryItem[];certs:Certification[]}|null>(null);
+  const [data,setData]=useState<{hero:Hero;profile:Profile;contacts:Contact[];resume:Resume|null;services:Service[];skills:Skill[];tools:Skill[];projects:Project[];gallery:GalleryItem[];testimonials:Testimonial[];certs:Certification[]}|null>(null);
   const [lb,setLb]=useState<LightboxState>({open:false,image:'',title:'',desc:''});
 
   useEffect(()=>{
@@ -609,8 +651,9 @@ export default function Page() {
       safe(fetch('/api/tools')),
       safe(fetch('/api/projects')),
       safe(fetch('/api/gallery')),
+      safe(fetch('/api/testimonials')),
       safe(fetch('/api/certifications')),
-    ]).then(([hero,profile,contacts,resume,services,skills,tools,projects,gallery,certs])=>{
+    ]).then(([hero,profile,contacts,resume,services,skills,tools,projects,gallery,testimonials,certs])=>{
       setData({
         hero: hero ?? {headline:'',subheadline:'',cta_text:'',cta_url:'',bg_image_url:null},
         profile: profile ?? {full_name:'',tagline:'',bio:'',avatar_url:null,location:'',years_experience:0},
@@ -621,6 +664,7 @@ export default function Page() {
         tools: tools ?? [],
         projects: projects ?? [],
         gallery: gallery ?? [],
+        testimonials: (testimonials ?? []).filter((t:Testimonial)=>t.is_published),
         certs: certs ?? [],
       });
     });
@@ -645,7 +689,7 @@ export default function Page() {
     </>
   );
 
-  const {hero,profile,contacts,resume,services,skills,tools,projects,gallery,certs}=data;
+  const {hero,profile,contacts,resume,services,skills,tools,projects,gallery,testimonials,certs}=data;
 
   return (
     <main style={{position:'relative',overflow:'hidden'}}>
@@ -658,6 +702,7 @@ export default function Page() {
       {tools.length>0&&<SkillGrid id="tools" label="Tools" title="Tools I Use" items={tools}/>}
       {projects.length>0&&<ProjectsSec items={projects} lb={setLb}/>}
       {gallery.length>0&&<GallerySec items={gallery} lb={setLb}/>}
+      {testimonials.length>0&&<TestimonialsSec items={testimonials}/>}
       <ResumeSec resume={resume}/>
       {certs.length>0&&<CertsSec items={certs} lb={setLb}/>}
       <ContactSec contacts={contacts}/>
