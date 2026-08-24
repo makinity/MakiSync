@@ -13,19 +13,19 @@ export async function POST(req: NextRequest) {
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
 
   const ext = file.name.split('.').pop();
-  const path = `avatars/1.${ext}`;
+  const path = `avatars/1_${Date.now()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const { error } = await supabase.storage
     .from('profiles')
-    .upload(path, buffer, { upsert: true, contentType: file.type });
+    .upload(path, buffer, { upsert: false, contentType: file.type });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const { data } = supabase.storage.from('profiles').getPublicUrl(path);
-  const url = `${data.publicUrl}?t=${Date.now()}`; // cache bust
+  const url = data.publicUrl;
 
-  await pool.query('UPDATE profile SET avatar_url=$1 WHERE id=1', [data.publicUrl]);
+  await pool.query('UPDATE profile SET avatar_url=$1 WHERE id=1', [url]);
 
-  return NextResponse.json({ url: data.publicUrl });
+  return NextResponse.json({ url });
 }

@@ -62,7 +62,7 @@ function AboutTab() {
     fd.append('file', file);
     const res = await fetch('/api/profile/avatar', { method: 'POST', body: fd });
     const data = await res.json();
-    if (data.url) setAvatar(data.url + '?t=' + Date.now());
+    if (data.url) setAvatar(data.url);
   };
 
   const handleSave = async () => {
