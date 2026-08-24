@@ -1,36 +1,68 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import { motion, useScroll, useMotionValue, useTransform, useSpring } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 
 // ── Types ────────────────────────────────────────────────
-type Hero    = { headline:string; subheadline:string; cta_text:string; cta_url:string; bg_image_url:string|null };
-type Profile = { full_name:string; tagline:string; bio:string; avatar_url:string|null; location:string; years_experience:number };
-type Contact = { key:string; label:string; value:string };
-type Resume  = { title:string; description:string; file_url:string|null; thumbnail_url:string|null };
-type Service = { id:number; title:string; description:string; icon:string };
-type Skill   = { id:number; name:string; logo_url:string|null; category:string };
-type Project = { id:number; title:string; description:string; cover_url:string|null; client:string|null; url:string|null; status:string };
-type GalleryItem = { id:number; image_url:string; title:string|null; description:string|null; category_name:string|null };
-type Testimonial  = { id:number; client_name:string; client_title:string|null; client_avatar_url:string|null; message:string; rating:number; is_published:boolean };
-type Certification = { id:number; title:string; issuer:string|null; issue_date:string|null; expiry_date:string|null; image_url:string|null; credential_url:string|null };
-type LightboxState = { open:boolean; image:string; title:string; desc:string };
+type Profile = {
+  full_name: string;
+  tagline: string;
+  bio: string;
+  avatar_url: string | null;
+  location: string;
+  years_experience: number;
+};
 
-function fmtDate(d:string|null) {
-  if (!d) return null;
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return null;
-  return dt.toLocaleDateString('en-US', { year:'numeric', month:'short' });
-}
-function isExpired(d:string|null) {
-  if (!d) return false;
-  const dt = new Date(d);
-  return !isNaN(dt.getTime()) && dt < new Date();
-}
+type Project = {
+  id: number;
+  title: string;
+  description: string;
+  cover_url: string | null;
+  client: string | null;
+  url: string | null;
+  status: string;
+};
 
-const socialIconMap: Record<string,string> = {
-  email:'bi-envelope-fill', phone:'bi-telephone-fill',
-  instagram:'bi-instagram', facebook:'bi-facebook',
-  linkedin:'bi-linkedin', twitter:'bi-twitter-x', website:'bi-globe',
+type Service = {
+  id: number;
+  title: string;
+  description: string;
+  icon: string;
+  category?: string;
+};
+
+type Skill = {
+  id: number;
+  name: string;
+  logo_url: string | null;
+  category: string;
+};
+
+type Contact = {
+  key: string;
+  label: string;
+  value: string;
+};
+
+type GalleryItem = {
+  id: number;
+  image_url: string;
+  title: string | null;
+  description: string | null;
+  category_name: string | null;
+};
+
+type Certification = {
+  id: number;
+  title: string;
+  issuer: string | null;
+  credential_url: string | null;
+  image_url: string | null;
+};
+
+const socialIconMap: Record<string, string> = {
+  email: 'bi-envelope-fill', phone: 'bi-telephone-fill',
+  instagram: 'bi-instagram', facebook: 'bi-facebook',
+  linkedin: 'bi-linkedin', twitter: 'bi-twitter-x', website: 'bi-globe',
 };
 
 // ── Dot Canvas ───────────────────────────────────────────
@@ -40,684 +72,1542 @@ function DotCanvas() {
     const canvas = ref.current; if (!canvas) return;
     if (window.innerWidth < 768) return;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
-    const SPACING=28, R=1.8, REPEL=120, LERP=0.08;
-    type Dot={rx:number;ry:number;cx:number;cy:number;vx:number;vy:number};
-    let dots:Dot[]=[], mouse={x:-9999,y:-9999}, raf:number;
-    const resize=()=>{
-      canvas.width=window.innerWidth; canvas.height=window.innerHeight; dots=[];
-      for(let x=0;x<canvas.width;x+=SPACING) for(let y=0;y<canvas.height;y+=SPACING)
-        dots.push({rx:x,ry:y,cx:x,cy:y,vx:0,vy:0});
+    const SPACING = 28, R = 1.8, REPEL = 200, LERP = 0.08;
+    type Dot = { rx: number; ry: number; cx: number; cy: number; vx: number; vy: number; lit: number };
+    let dots: Dot[] = [], mouse = { x: -9999, y: -9999 }, raf: number;
+
+    const resize = () => {
+      canvas.width = window.innerWidth; canvas.height = window.innerHeight; dots = [];
+      for (let x = 0; x < canvas.width; x += SPACING)
+        for (let y = 0; y < canvas.height; y += SPACING)
+          dots.push({ rx: x, ry: y, cx: x, cy: y, vx: 0, vy: 0, lit: 0 });
     };
-    const draw=()=>{
-      const isDark=document.documentElement.getAttribute('data-theme')!=='light';
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      ctx.fillStyle=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)';
-      dots.forEach(d=>{
-        const dx=d.cx-mouse.x,dy=d.cy-mouse.y,dist=Math.sqrt(dx*dx+dy*dy);
-        if(dist<REPEL){const f=(REPEL-dist)/REPEL;d.vx+=(dx/dist)*f*3;d.vy+=(dy/dist)*f*3;}
-        d.cx+=(d.rx-d.cx)*LERP+d.vx; d.cy+=(d.ry-d.cy)*LERP+d.vy; d.vx*=0.85; d.vy*=0.85;
-        ctx.beginPath(); ctx.arc(d.cx,d.cy,R,0,Math.PI*2); ctx.fill();
+
+    const draw = () => {
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      dots.forEach(d => {
+        const dx = d.cx - mouse.x, dy = d.cy - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Repel
+        if (dist < REPEL) {
+          const f = (REPEL - dist) / REPEL;
+          d.vx += (dx / dist) * f * 3;
+          d.vy += (dy / dist) * f * 3;
+          d.lit = Math.max(d.lit, Math.pow(1 - dist / REPEL, 1.5)); // stronger glow near cursor
+        } else {
+          d.lit *= 0.90; // fade out
+        }
+
+        d.cx += (d.rx - d.cx) * LERP + d.vx;
+        d.cy += (d.ry - d.cy) * LERP + d.vy;
+        d.vx *= 0.85; d.vy *= 0.85;
+
+        // Blend between base color and accent blue based on lit
+        if (d.lit > 0.01) {
+          // Interpolate: base → #3b82f6
+          const base = isDark ? [255, 255, 255, 0.12] : [0, 0, 0, 0.1];
+          const accent = [59, 130, 246];
+          const r = Math.round(base[0] + (accent[0] - base[0]) * d.lit);
+          const g = Math.round(base[1] + (accent[1] - base[1]) * d.lit);
+          const b = Math.round(base[2] + (accent[2] - base[2]) * d.lit);
+          const a = (base[3] as number) + (0.8 - (base[3] as number)) * d.lit;
+          ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
+          const radius = R + d.lit * 2.5; // dots grow more when lit
+          ctx.beginPath(); ctx.arc(d.cx, d.cy, radius, 0, Math.PI * 2); ctx.fill();
+        } else {
+          ctx.fillStyle = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+          ctx.beginPath(); ctx.arc(d.cx, d.cy, R, 0, Math.PI * 2); ctx.fill();
+        }
       });
-      raf=requestAnimationFrame(draw);
+
+      raf = requestAnimationFrame(draw);
     };
-    const onMouse=(e:MouseEvent)=>{mouse={x:e.clientX,y:e.clientY};};
+
+    const onMouse = (e: MouseEvent) => { mouse = { x: e.clientX, y: e.clientY }; };
+    const onLeave = () => { mouse = { x: -9999, y: -9999 }; };
+
     resize(); draw();
-    window.addEventListener('resize',resize); window.addEventListener('mousemove',onMouse);
-    return()=>{ cancelAnimationFrame(raf); window.removeEventListener('resize',resize); window.removeEventListener('mousemove',onMouse); };
-  },[]);
-  return <canvas ref={ref} style={{position:'fixed',inset:0,width:'100%',height:'100%',zIndex:0,pointerEvents:'none'}}/>;
+    window.addEventListener('resize', resize);
+    window.addEventListener('mousemove', onMouse);
+    window.addEventListener('mouseleave', onLeave);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('mousemove', onMouse);
+      window.removeEventListener('mouseleave', onLeave);
+    };
+  }, []);
+  return <canvas ref={ref} style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }} />;
 }
 
-// ── Navbar ───────────────────────────────────────────────
-const NAV = ['about','services','skills','tools','projects','gallery','testimonials','resume','certifications','contact'];
+// ── Marquee Text (scrolling stroke letters behind photo) ─
+function MarqueeText({ text, speed = 40, reverse = false }: { text: string; speed?: number; reverse?: boolean }) {
+  // Duplicate enough times to fill screen width
+  const repeated = Array(8).fill(text).join('  ·  ');
 
-function Navbar() {
-  const {scrollY}=useScroll();
-  const [scrolled,setScrolled]=useState(false);
-  const [active,setActive]=useState('');
-  const [open,setOpen]=useState(false);
-  const [dark,setDark]=useState(true);
-  useEffect(()=>{
-    const t=localStorage.getItem('theme')?? 'dark';
-    setDark(t==='dark');
-  },[]);
-  const toggle=()=>{
-    const nd=!dark; setDark(nd);
-    const t=nd?'dark':'light';
-    localStorage.setItem('theme',t);
-    document.documentElement.setAttribute('data-theme',t);
-  };
-  useEffect(()=>{
-    const obs=new IntersectionObserver(e=>e.forEach(x=>{if(x.isIntersecting)setActive(x.target.id);}),{threshold:0.3});
-    NAV.forEach(id=>{const el=document.getElementById(id);if(el)obs.observe(el);});
-    return()=>obs.disconnect();
-  },[]);
-  const go=(id:string)=>{document.getElementById(id)?.scrollIntoView({behavior:'smooth'});setOpen(false);};
   return (
-    <>
-      <motion.nav style={{position:'fixed',top:0,left:0,right:0,height:60,background:'transparent',zIndex:100,display:'flex',alignItems:'center',padding:'0 1.5rem'}}>
-        {/* Logo — left */}
-        <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-          <img src="/logo.png" alt="MakiSync" style={{width:32,height:32,borderRadius:8,objectFit:'contain'}} onError={e=>{const t=e.target as HTMLImageElement;t.style.display='none';t.insertAdjacentHTML('afterend','<div style="width:32px;height:32px;border-radius:8px;background:var(--admin-accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:16px">M</div>');}}/>
-          <span style={{fontSize:'0.95rem',fontWeight:700,color:'var(--admin-text-primary)'}}>MakiSync</span>
-        </div>
-        {/* Nav links — absolutely centered */}
-        <div className="nav-links" style={{position:'absolute',left:'50%',transform:'translateX(-50%)',display:'flex',gap:24,alignItems:'center'}}>
-          {NAV.map(id=>(
-            <button key={id} onClick={()=>go(id)} style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.82rem',fontWeight:600,color:active===id?'var(--admin-accent)':'var(--admin-text-secondary)',textTransform:'capitalize',fontFamily:'inherit',position:'relative',transition:'color 0.2s'}}>
-              {id}{active===id&&<motion.div layoutId="ul" style={{position:'absolute',bottom:-4,left:0,right:0,height:2,background:'var(--admin-accent)',borderRadius:1}}/>}
-            </button>
-          ))}
-        </div>
-        {/* Theme toggle + Login + Hamburger — right side */}
-        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:10}}>
-          <button onClick={toggle} style={{width:48,height:26,borderRadius:99,border:'none',cursor:'pointer',background:dark?'var(--admin-accent)':'#cbd5e1',transition:'background 0.2s',display:'flex',alignItems:'center',padding:'0 3px',flexShrink:0}} title={dark?'Switch to light':'Switch to dark'}>
-            <motion.span animate={{x:dark?22:0}} transition={{type:'spring',stiffness:500,damping:30}} style={{width:20,height:20,borderRadius:'50%',background:'#fff',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-              {dark
-                ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-              }
-            </motion.span>
-          </button>
-          <a href="/login" className="nav-login" style={{display:'flex',alignItems:'center',gap:'0.35rem',padding:'0.35rem 0.85rem',borderRadius:8,border:'1px solid var(--admin-border-strong)',background:'transparent',color:'var(--admin-text-secondary)',fontSize:'0.8rem',fontWeight:600,textDecoration:'none',transition:'all 0.2s',flexShrink:0}}>
-            <i className="bi bi-box-arrow-in-right" style={{fontSize:'0.8rem'}}/>
-            Login
-          </a>
-          <button className="nav-hamburger" onClick={()=>setOpen(o=>!o)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--admin-text-primary)',fontSize:22,display:'none',padding:'4px 6px',alignItems:'center'}}>
-            <i className={`bi ${open?'bi-x':'bi-list'}`}/>
-          </button>
-        </div>
-      </motion.nav>
-      <style>{`
-        @media(max-width:768px){
-          .nav-links{display:none!important}
-          .nav-hamburger{display:flex!important;align-items:center}
-          .nav-login{display:none!important}
-        }
-        .nav-login:hover{
-          color:var(--admin-accent)!important;
-          border-color:var(--admin-accent)!important;
-          background:rgba(59,130,246,0.08)!important;
-        }
-      `}</style>
-      {/* Mobile drawer overlay */}
-      {open&&<div onClick={()=>setOpen(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)',zIndex:101}}/>}
-      {/* Mobile drawer */}
+    <div style={{ overflow: 'hidden', width: '100%', userSelect: 'none' }}>
       <motion.div
-        initial={{x:'100%'}} animate={{x:open?'0%':'100%'}}
-        transition={{type:'spring',stiffness:300,damping:30}}
-        style={{position:'fixed',top:0,right:0,bottom:0,width:260,background:'var(--admin-card)',borderLeft:'1px solid var(--admin-border)',zIndex:102,display:'flex',flexDirection:'column',padding:'1.5rem 1.25rem',gap:'0.35rem'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem',paddingBottom:'0.75rem',borderBottom:'1px solid var(--admin-border)'}}>
-          <span style={{fontSize:'0.95rem',fontWeight:700,color:'var(--admin-text-primary)'}}>Menu</span>
-          <button onClick={()=>setOpen(false)} style={{background:'none',border:'none',cursor:'pointer',color:'var(--admin-text-muted)',fontSize:18,padding:'2px 4px'}}><i className="bi bi-x-lg"/></button>
-        </div>
-        {NAV.map(id=>(
-          <button key={id} onClick={()=>go(id)} style={{background:active===id?'rgba(59,130,246,0.1)':'none',border:`1px solid ${active===id?'rgba(59,130,246,0.22)':'transparent'}`,borderRadius:10,cursor:'pointer',fontSize:'0.9rem',fontWeight:600,color:active===id?'var(--admin-accent)':'var(--admin-text-secondary)',textAlign:'left',textTransform:'capitalize',fontFamily:'inherit',padding:'0.7rem 0.85rem',transition:'all 0.15s'}}>{id}</button>
-        ))}
-      </motion.div>
-    </>
-  );
-}
-
-// ── Section Wrapper ──────────────────────────────────────
-const fadeUp={initial:{opacity:0,y:40},whileInView:{opacity:1,y:0},viewport:{once:true,amount:0.15},transition:{duration:0.6,ease:'easeOut'}} as const;
-
-function Sec({id,children}:{id:string;children:React.ReactNode}) {
-  return (
-    <section id={id} style={{position:'relative',zIndex:1,padding:'5rem 2rem',maxWidth:1200,margin:'0 auto'}}>
-      {children}
-    </section>
-  );
-}
-
-function SectionTitle({label,title,sub}:{label:string;title:string;sub?:string}) {
-  return (
-    <motion.div {...fadeUp} style={{marginBottom:'2.5rem'}}>
-      <div style={{fontSize:'0.7rem',fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--admin-accent)',marginBottom:6}}>{label}</div>
-      <h2 style={{fontSize:'clamp(1.6rem,4vw,2.5rem)',fontWeight:800,color:'var(--admin-text-primary)',letterSpacing:'-0.03em',marginBottom:6}}>{title}</h2>
-      {sub&&<p style={{fontSize:'1rem',color:'var(--admin-text-muted)'}}>{sub}</p>}
-    </motion.div>
-  );
-}
-
-
-// ── Hero ─────────────────────────────────────────────────
-function Hero({data,profile}:{data:Hero;profile:Profile}) {
-  const go=()=>document.getElementById('contact')?.scrollIntoView({behavior:'smooth'});
-  return (
-    <section id="hero" style={{position:'relative',zIndex:1,minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:'2rem',marginTop:60}}>
-      {data.bg_image_url&&<div style={{position:'absolute',inset:0,backgroundImage:`url(${data.bg_image_url})`,backgroundSize:'cover',backgroundPosition:'center',opacity:0.12,zIndex:0}}/>}
-      <motion.div initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{delay:0,duration:0.7}} style={{fontSize:'0.82rem',fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--admin-accent)',marginBottom:20,position:'relative',zIndex:1}}>Welcome</motion.div>
-      {profile.avatar_url&&<motion.img initial={{opacity:0,scale:0.8}} animate={{opacity:1,scale:1}} transition={{delay:0.1,duration:0.7}} src={profile.avatar_url} alt={profile.full_name} style={{width:80,height:80,borderRadius:'50%',border:'2px solid var(--admin-accent)',objectFit:'cover',marginBottom:24,position:'relative',zIndex:1}}/>}
-      <motion.h1 initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{delay:0.2,duration:0.7}} style={{fontSize:'clamp(2rem,6vw,3.5rem)',fontWeight:800,color:'var(--admin-text-primary)',letterSpacing:'-0.03em',marginBottom:16,maxWidth:800,position:'relative',zIndex:1}}>{data.headline||profile.full_name}</motion.h1>
-      <motion.p initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{delay:0.3,duration:0.7}} style={{fontSize:'1.1rem',color:'var(--admin-text-secondary)',maxWidth:600,marginBottom:32,lineHeight:1.6,position:'relative',zIndex:1}}>{data.subheadline||profile.tagline}</motion.p>
-      <motion.button initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{delay:0.4,duration:0.7}} whileHover={{y:-2,scale:1.02}} onClick={go} style={{padding:'12px 32px',background:'var(--admin-accent)',color:'#fff',border:'none',borderRadius:10,fontSize:'0.95rem',fontWeight:700,cursor:'pointer',boxShadow:'var(--admin-shadow)',fontFamily:'inherit',position:'relative',zIndex:1}}>{data.cta_text||'Get In Touch'}</motion.button>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.6}} style={{position:'absolute',bottom:40,left:'50%',transform:'translateX(-50%)',zIndex:1}}>
-        <motion.div animate={{y:[0,10,0]}} transition={{repeat:Infinity,duration:2}} style={{color:'var(--admin-accent)',fontSize:24}}><i className="bi bi-chevron-down"/></motion.div>
-      </motion.div>
-    </section>
-  );
-}
-
-// ── About ────────────────────────────────────────────────
-function About({profile,contacts,resume}:{profile:Profile;contacts:Contact[];resume:Resume|null}) {
-  return (
-    <Sec id="about">
-      <SectionTitle label="About Me" title={profile.full_name} sub={profile.tagline}/>
-      <motion.div {...fadeUp} className="about-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:48}}>
-        <div style={{display:'flex',flexDirection:'column',alignItems:'center'}}>
-          <div style={{width:160,height:160,borderRadius:'50%',overflow:'hidden',border:'3px solid var(--admin-accent)',marginBottom:24,background:'rgba(59,130,246,0.1)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-            {profile.avatar_url?<img src={profile.avatar_url} alt={profile.full_name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<i className="bi bi-person-fill" style={{fontSize:'4rem',color:'var(--admin-accent)'}}/>}
-          </div>
-          <div style={{display:'flex',gap:10,marginBottom:20,flexWrap:'wrap',justifyContent:'center'}}>
-            {contacts.filter(c=>socialIconMap[c.key]&&c.value).map(c=>(
-              <motion.a key={c.key} href={c.key==='email'?`mailto:${c.value}`:c.value} target="_blank" rel="noreferrer" whileHover={{scale:1.15,y:-2}} style={{width:40,height:40,borderRadius:'50%',border:'1px solid var(--admin-border)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--admin-text-primary)',fontSize:17,textDecoration:'none'}}>
-                <i className={`bi ${socialIconMap[c.key]}`}/>
-              </motion.a>
-            ))}
-          </div>
-          {resume?.file_url&&<motion.a href={resume.file_url} target="_blank" rel="noreferrer" download whileHover={{scale:1.02}} style={{padding:'10px 24px',background:'var(--admin-accent)',color:'#fff',borderRadius:10,textDecoration:'none',fontSize:'0.9rem',fontWeight:700}}>Download Resume</motion.a>}
-        </div>
-        <div>
-          <p style={{fontSize:'1rem',color:'var(--admin-text-secondary)',lineHeight:1.7,marginBottom:24}}>{profile.bio}</p>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-            {profile.location&&<div style={{padding:16,background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:10}}><div style={{fontSize:'0.7rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'var(--admin-accent)',marginBottom:6}}>Location</div><div style={{fontWeight:600,color:'var(--admin-text-primary)'}}>{profile.location}</div></div>}
-            {profile.years_experience&&<div style={{padding:16,background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:10}}><div style={{fontSize:'0.7rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'var(--admin-accent)',marginBottom:6}}>Experience</div><div style={{fontWeight:600,color:'var(--admin-text-primary)'}}>{profile.years_experience}+ Years</div></div>}
-          </div>
-        </div>
-      </motion.div>
-      <style>{`@media(max-width:768px){.about-grid{grid-template-columns:1fr!important}}`}</style>
-    </Sec>
-  );
-}
-
-// ── Services ─────────────────────────────────────────────
-function Services({items}:{items:Service[]}) {
-  return (
-    <Sec id="services">
-      <SectionTitle label="Services" title="What I Offer" sub="Comprehensive social media and virtual assistance solutions"/>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:24}}>
-        {items.map((s,i)=>(
-          <motion.div key={s.id} {...fadeUp} transition={{...fadeUp.transition,delay:i*0.08}} whileHover={{y:-4,borderColor:'var(--admin-accent)'}} style={{padding:24,background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:14,transition:'border-color 0.2s'}}>
-            <div style={{width:48,height:48,background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.25)',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--admin-accent)',fontSize:22,marginBottom:16}}><i className={`bi ${s.icon||'bi-box-seam-fill'}`}/></div>
-            <h3 style={{fontSize:'1rem',fontWeight:700,color:'var(--admin-text-primary)',marginBottom:8}}>{s.title}</h3>
-            <p style={{fontSize:'0.87rem',color:'var(--admin-text-secondary)',lineHeight:1.6}}>{s.description}</p>
-          </motion.div>
-        ))}
-      </div>
-    </Sec>
-  );
-}
-
-
-// ── Hero ─────────────────────────────────────────────────
-function HeroSec({data,profile}:{data:Hero;profile:Profile}) {
-  const go=()=>document.getElementById('contact')?.scrollIntoView({behavior:'smooth'});
-  return (
-    <section id="hero" style={{position:'relative',zIndex:1,minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:'2rem',marginTop:60}}>
-      <motion.div initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{delay:0,duration:0.7}} style={{fontSize:'0.78rem',fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--admin-accent)',marginBottom:20}}>Welcome</motion.div>
-      {profile.avatar_url&&<motion.img initial={{opacity:0,scale:0.8}} animate={{opacity:1,scale:1}} transition={{delay:0.1,duration:0.7}} src={profile.avatar_url} alt={profile.full_name} style={{width:80,height:80,borderRadius:'50%',border:'2px solid var(--admin-accent)',objectFit:'cover',marginBottom:24}}/>}
-      <motion.h1 initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{delay:0.2,duration:0.7}} style={{fontSize:'clamp(2rem,6vw,3.5rem)',fontWeight:800,color:'var(--admin-text-primary)',letterSpacing:'-0.03em',marginBottom:16,maxWidth:800}}>{data.headline||profile.full_name}</motion.h1>
-      <motion.p initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{delay:0.3,duration:0.7}} style={{fontSize:'1.1rem',color:'var(--admin-text-secondary)',maxWidth:600,marginBottom:32,lineHeight:1.6}}>{data.subheadline||profile.tagline}</motion.p>
-      <motion.button initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} transition={{delay:0.4,duration:0.7}} whileHover={{y:-2,scale:1.02}} onClick={go} style={{padding:'12px 32px',background:'var(--admin-accent)',color:'#fff',border:'none',borderRadius:10,fontSize:'0.95rem',fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>{data.cta_text||'Get In Touch'}</motion.button>
-      <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.6}} style={{position:'absolute',bottom:40}}>
-        <motion.div animate={{y:[0,10,0]}} transition={{repeat:Infinity,duration:2}} style={{color:'var(--admin-accent)',fontSize:24}}><i className="bi bi-chevron-down"/></motion.div>
-      </motion.div>
-    </section>
-  );
-}
-
-// ── Profile Card (tilt + float) ───────────────────────────
-function ProfileCard({avatar_url,full_name,resume}:{avatar_url:string|null;full_name:string;resume:Resume|null}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const rotateX = useSpring(useTransform(y, [-0.5,0.5], [12,-12]), {stiffness:200,damping:20});
-  const rotateY = useSpring(useTransform(x, [-0.5,0.5], [-12,12]), {stiffness:200,damping:20});
-  const shadow = useTransform(y, [-0.5,0.5], [
-    '0 40px 80px rgba(59,130,246,0.45), 0 8px 24px rgba(0,0,0,0.3)',
-    '0 10px 30px rgba(59,130,246,0.2), 0 4px 12px rgba(0,0,0,0.15)'
-  ]);
-
-  function onMove(e:React.MouseEvent<HTMLDivElement>) {
-    const r = ref.current!.getBoundingClientRect();
-    x.set((e.clientX - r.left) / r.width - 0.5);
-    y.set((e.clientY - r.top)  / r.height - 0.5);
-  }
-  function onLeave() { x.set(0); y.set(0); }
-
-  return (
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:20,paddingTop:90}}>
-      <motion.div
-        ref={ref}
-        onMouseMove={onMove}
-        onMouseLeave={onLeave}
-        animate={{y:[0,-10,0]}}
-        transition={{duration:4,repeat:Infinity,ease:'easeInOut'}}
-        style={{rotateX,rotateY,boxShadow:shadow,borderRadius:20,overflow:'hidden',transformStyle:'preserve-3d',cursor:'pointer',width:'100%',maxWidth:320,aspectRatio:'3/4'}}
+        style={{ display: 'inline-flex', whiteSpace: 'nowrap' }}
+        animate={{ x: reverse ? ['0%', '50%'] : ['0%', '-50%'] }}
+        transition={{ duration: speed, ease: 'linear', repeat: Infinity }}
       >
-        {avatar_url
-          ? <img src={avatar_url} alt={full_name} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
-          : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(59,130,246,0.08)'}}><i className="bi bi-person-fill" style={{fontSize:'6rem',color:'var(--admin-accent)'}}/></div>
-        }
+        {/* Two copies so the loop is seamless */}
+        {[0, 1].map(i => (
+          <span
+            key={i}
+            style={{
+              fontSize: 'clamp(72px, 13vw, 160px)',
+              fontWeight: 900,
+              letterSpacing: '-0.02em',
+              textTransform: 'uppercase',
+              color: 'transparent',
+              WebkitTextStroke: '1.5px var(--stroke-color)',
+              lineHeight: 1,
+              paddingRight: '0.4em',
+              fontFamily: 'inherit',
+            }}
+          >
+            {repeated}
+          </span>
+        ))}
       </motion.div>
-      {resume?.file_url&&<motion.a href={resume.file_url} target="_blank" rel="noreferrer" whileHover={{scale:1.02}} style={{padding:'10px 24px',background:'var(--admin-accent)',color:'#fff',borderRadius:10,textDecoration:'none',fontSize:'0.9rem',fontWeight:700}}>Download Resume</motion.a>}
     </div>
   );
 }
 
-// ── About ────────────────────────────────────────────────
-function AboutSec({profile,contacts,resume}:{profile:Profile;contacts:Contact[];resume:Resume|null}) {
+// ── Navbar ───────────────────────────────────────────────
+const NAV_LINKS = ['Work', 'Services', 'About', 'Gallery', 'Contact'];
+
+function Navbar({ name }: { name: string }) {
+  const [dark, setDark] = useState(true);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const t = localStorage.getItem('theme') ?? 'dark';
+    setDark(t === 'dark');
+    document.documentElement.setAttribute('data-theme', t);
+  }, []);
+
+  const toggle = () => {
+    const nd = !dark;
+    setDark(nd);
+    const t = nd ? 'dark' : 'light';
+    localStorage.setItem('theme', t);
+    document.documentElement.setAttribute('data-theme', t);
+  };
+
+  const go = (id: string) => {
+    document.getElementById(id.toLowerCase())?.scrollIntoView({ behavior: 'smooth' });
+    setOpen(false);
+  };
+
   return (
-    <Sec id="about">
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:48,alignItems:'start'}} className="about-grid">
-        <div>
-          <SectionTitle label="About Me" title={profile.full_name} sub={profile.tagline}/>
-          <motion.div {...fadeUp}>
-            <p style={{fontSize:'1rem',color:'var(--admin-text-secondary)',lineHeight:1.7,marginBottom:24}}>{profile.bio}</p>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:24}}>
-              {profile.location&&<div style={{padding:16,background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:10}}><div style={{fontSize:'0.7rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'var(--admin-accent)',marginBottom:6}}>Location</div><div style={{fontWeight:600,color:'var(--admin-text-primary)'}}>{profile.location}</div></div>}
-              {!!profile.years_experience&&<div style={{padding:16,background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:10}}><div style={{fontSize:'0.7rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:'var(--admin-accent)',marginBottom:6}}>Experience</div><div style={{fontWeight:600,color:'var(--admin-text-primary)'}}>{profile.years_experience}+ Years</div></div>}
+    <>
+      {/* Outer wrapper — full width, truly centered */}
+      <div style={{ position: 'fixed', top: 20, left: 0, right: 0, zIndex: 100, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+      <motion.nav
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        style={{
+          pointerEvents: 'all',
+          display: 'flex', alignItems: 'center', gap: 0,
+          background: 'var(--nav-bg)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid var(--admin-border)',
+          borderRadius: 99,
+          padding: '8px 8px 8px 16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          width: 'fit-content',
+        }}
+        className="v2-nav"
+      >
+        {/* Logo + Name */}
+        {/* Logo + Name */}
+        <div onClick={() => document.getElementById('hero')?.scrollIntoView({ behavior: 'smooth' })}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 28, flexShrink: 0, cursor: 'pointer' }}>
+          <img src="/logo.png" alt="logo" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 8 }}
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          <span style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--admin-text-primary)', letterSpacing: '-0.01em' }}>
+            MakiSync
+          </span>
+        </div>
+
+        {/* Links */}
+        <div className="v2-nav-links" style={{ display: 'flex', gap: 2, flex: 1, justifyContent: 'center' }}>
+          {NAV_LINKS.map(l => (
+            <button key={l} onClick={() => go(l)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: '0.8rem', fontWeight: 600,
+                color: 'var(--admin-text-secondary)',
+                fontFamily: 'inherit', padding: '6px 14px', borderRadius: 99,
+                transition: 'all 0.2s', letterSpacing: '0.04em', textTransform: 'uppercase',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(59,130,246,0.1)'; (e.currentTarget as HTMLElement).style.color = 'var(--admin-accent)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none'; (e.currentTarget as HTMLElement).style.color = 'var(--admin-text-secondary)'; }}
+            >{l}</button>
+          ))}
+        </div>
+
+        {/* Right side */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 8, flexShrink: 0 }}>
+          {/* Theme toggle icon */}
+          <button onClick={toggle} style={{
+            width: 36, height: 36, borderRadius: '50%', border: '1px solid var(--admin-border)',
+            background: 'transparent', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--admin-text-secondary)', fontSize: 15, transition: 'all 0.2s',
+          }}>
+            {dark
+              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4" /><line x1="12" y1="2" x2="12" y2="4" /><line x1="12" y1="20" x2="12" y2="22" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="2" y1="12" x2="4" y2="12" /><line x1="20" y1="12" x2="22" y2="12" /></svg>
+            }
+          </button>
+
+          {/* Hire Me CTA */}
+          <a href="#contact"
+            style={{
+              padding: '8px 20px', borderRadius: 99,
+              background: 'var(--admin-accent)', color: '#fff',
+              fontSize: '0.8rem', fontWeight: 700,
+              textDecoration: 'none', letterSpacing: '0.03em',
+              transition: 'opacity 0.2s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.85'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
+          >
+            Hire Me
+          </a>
+
+          {/* Hamburger (mobile) */}
+          <button className="v2-hamburger" onClick={() => setOpen(o => !o)}
+            style={{
+              display: 'none', background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--admin-text-primary)', fontSize: 20, padding: '4px',
+              alignItems: 'center',
+            }}
+          >
+            <i className={`bi ${open ? 'bi-x' : 'bi-list'}`} />
+          </button>
+        </div>
+      </motion.nav>
+      </div> {/* end centering wrapper */}
+
+      {/* Mobile drawer */}
+      {open && <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', zIndex: 101 }} />}
+      <motion.div
+        initial={{ x: '100%' }} animate={{ x: open ? '0%' : '100%' }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: 240,
+          background: 'var(--admin-card)', borderLeft: '1px solid var(--admin-border)',
+          zIndex: 102, display: 'flex', flexDirection: 'column', padding: '1.5rem 1.25rem', gap: '0.35rem',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+          <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--admin-text-muted)', fontSize: 20 }}>
+            <i className="bi bi-x-lg" />
+          </button>
+        </div>
+        {NAV_LINKS.map(l => (
+          <button key={l} onClick={() => go(l)}
+            style={{
+              background: 'none', border: '1px solid transparent', borderRadius: 10,
+              cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600,
+              color: 'var(--admin-text-secondary)', textAlign: 'left',
+              textTransform: 'uppercase', fontFamily: 'inherit',
+              padding: '0.7rem 0.85rem', letterSpacing: '0.05em',
+            }}
+          >{l}</button>
+        ))}
+      </motion.div>
+
+      <style>{`
+        @media(max-width: 640px) {
+          .v2-nav { width: calc(100% - 32px) !important; padding: 8px 8px 8px 12px !important; }
+          .v2-nav-links { display: none !important; }
+          .v2-hamburger { display: flex !important; }
+        }
+      `}</style>
+    </>
+  );
+}
+
+// ── Hero Section ─────────────────────────────────────────
+function HeroSection({ profile }: { profile: Profile | null }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: containerRef, offset: ['start start', 'end start'] });
+  const photoY = useTransform(scrollYProgress, [0, 1], ['0%', '15%']);
+
+  const name = profile?.full_name || 'MakiSync';
+  const tagline = profile?.tagline || 'Social Media Manager & VA';
+  const avatarUrl = profile?.avatar_url;
+
+  // Split name for the marquee — use name or a default
+  const marqueeText = name.toUpperCase();
+
+  return (
+    <section
+      ref={containerRef}
+      id="hero"
+      style={{
+        position: 'relative',
+        width: '100%',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        background: 'var(--admin-bg-primary)',
+      }}
+    >
+      {/* ── Marquee rows (behind the photo) ── */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', flexDirection: 'column',
+        justifyContent: 'center', gap: 0,
+        pointerEvents: 'none', zIndex: 0,
+        overflow: 'hidden',
+      }}>
+        {/* Row 1 — left scroll */}
+        <div style={{ transform: 'translateY(0)' }}>
+          <MarqueeText text={marqueeText} speed={60} reverse={false} />
+        </div>
+        {/* Row 2 — right scroll */}
+        <div style={{ marginTop: -20 }}>
+          <MarqueeText text={tagline.toUpperCase()} speed={45} reverse={true} />
+        </div>
+      </div>
+
+      {/* ── Profile photo (center, above marquee) ── */}
+      <motion.div
+        style={{ y: photoY, position: 'relative', zIndex: 2 }}
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      >
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={name}
+            style={{
+              width: 'auto',
+              height: '100vh',
+              maxHeight: '100vh',
+              objectFit: 'cover',
+              objectPosition: 'top center',
+              display: 'block',
+              filter: 'drop-shadow(0 40px 80px rgba(0,0,0,0.5))',
+            }}
+          />
+        ) : (
+          /* Placeholder silhouette if no avatar yet */
+          <div style={{
+            width: 'clamp(280px, 38vw, 520px)',
+            height: '100vh',
+            background: 'linear-gradient(160deg, rgba(59,130,246,0.15), rgba(99,102,241,0.08))',
+            border: '1px solid var(--admin-border)',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            gap: 12, color: 'var(--admin-text-muted)',
+          }}>
+            <i className="bi bi-person-fill" style={{ fontSize: '6rem', color: 'var(--admin-accent)', opacity: 0.4 }} />
+            <span style={{ fontSize: '0.82rem' }}>Add profile photo</span>
+          </div>
+        )}
+      </motion.div>
+
+      {/* ── Bottom info bar ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.6 }}
+        style={{
+          position: 'absolute', bottom: 36, left: 0, right: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 3rem', zIndex: 3,
+        }}
+        className="v2-hero-bar"
+      >
+        {/* Left — tagline */}
+        <div style={{ maxWidth: 260 }}>
+          <div style={{
+            fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em',
+            textTransform: 'uppercase', color: 'var(--admin-accent)', marginBottom: 4,
+          }}>
+            Available for work
+          </div>
+          <div style={{ fontSize: '0.88rem', color: 'var(--admin-text-secondary)', lineHeight: 1.4 }}>
+            {tagline}
+          </div>
+        </div>
+
+        {/* Center — scroll indicator */}
+        <motion.div
+          animate={{ y: [0, 8, 0] }}
+          transition={{ repeat: Infinity, duration: 2 }}
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            color: 'var(--admin-text-muted)', fontSize: '0.65rem',
+            fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+          }}
+        >
+          <span>Scroll</span>
+          <svg width="16" height="24" viewBox="0 0 16 24" fill="none">
+            <rect x="1" y="1" width="14" height="22" rx="7" stroke="currentColor" strokeWidth="1.5" />
+            <motion.rect
+              x="6.5" y="4" width="3" height="5" rx="1.5" fill="currentColor"
+              animate={{ y: [0, 6, 0] }} transition={{ repeat: Infinity, duration: 2 }}
+            />
+          </svg>
+        </motion.div>
+
+        {/* Right — experience badge */}
+        <div style={{ textAlign: 'right', maxWidth: 200 }}>
+          {profile?.years_experience ? (
+            <>
+              <div style={{ fontSize: 'clamp(1.8rem,3vw,2.5rem)', fontWeight: 900, color: 'var(--admin-text-primary)', lineHeight: 1 }}>
+                {profile.years_experience}+
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--admin-text-secondary)', marginTop: 2 }}>
+                Years Experience
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: '0.78rem', color: 'var(--admin-text-muted)', fontStyle: 'italic' }}>
+              {profile?.location || ''}
             </div>
-            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-              {contacts.filter(c=>socialIconMap[c.key]&&c.value).map(c=>(
-                <motion.a key={c.key} href={c.key==='email'?`mailto:${c.value}`:c.value} target="_blank" rel="noreferrer" whileHover={{scale:1.15,y:-2}} style={{width:40,height:40,borderRadius:'50%',border:'1px solid var(--admin-border)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--admin-text-primary)',fontSize:17,textDecoration:'none'}}>
-                  <i className={`bi ${socialIconMap[c.key]}`}/>
+          )}
+        </div>
+      </motion.div>
+
+      <style>{`
+        @media(max-width: 640px) {
+          .v2-hero-bar { padding: 0 1.25rem !important; }
+          .v2-hero-bar > div:first-child { display: none; }
+          .v2-hero-bar > div:last-child { display: none; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+// ── Work Gallery ─────────────────────────────────────────
+function WorkGallery({ projects }: { projects: Project[] }) {
+  const pub = projects.filter(p => p.status === 'published');
+  const [index, setIndex] = useState(0); // unbounded, wraps via modulo
+
+  if (pub.length === 0) return null;
+
+  const count = pub.length;
+  const activeIdx = ((index % count) + count) % count;
+  const current = pub[activeIdx];
+
+  // Get project at a virtual offset from active
+  function getProject(offset: number) {
+    return pub[((activeIdx + offset) % count + count) % count];
+  }
+
+  // Framer Motion animate props per slot
+  function getAnimate(offset: number) {
+    const abs = Math.abs(offset);
+    return {
+      x: offset * 230,
+      scale: offset === 0 ? 1 : 0.75 - (abs - 1) * 0.04,
+      rotateY: offset * -14,
+      filter: `brightness(${offset === 0 ? 1 : 0.5 - (abs - 1) * 0.05})`,
+      zIndex: offset === 0 ? 10 : 10 - abs * 3,
+    };
+  }
+
+  const slots = [-2, -1, 0, 1, 2];
+
+  return (
+    <section id="work" style={{
+      padding: '6rem 2rem 5rem',
+      background: 'var(--admin-bg-primary)',
+      overflow: 'hidden',
+    }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '3rem' }}>
+          <div>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--admin-text-muted)', marginBottom: 8 }}>
+              Selected Work
+            </div>
+            <h2 style={{ fontSize: 'clamp(2.2rem,5vw,3.5rem)', fontWeight: 900, color: 'var(--admin-text-primary)', letterSpacing: '-0.03em', display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
+              Work Gallery
+              <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ repeat: Infinity, duration: 1 }} style={{ display: 'inline-block', width: 3, height: '0.85em', background: 'var(--admin-accent)', borderRadius: 2, marginLeft: 4 }} />
+            </h2>
+            <p style={{ fontSize: '0.9rem', color: 'var(--admin-text-muted)', marginTop: 10 }}>
+              A collection of social media, design, and web projects.
+            </p>
+          </div>
+          <motion.a href="/" whileHover={{ scale: 1.03 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 22px', borderRadius: 10, border: '1px solid var(--admin-border)', color: 'var(--admin-text-primary)', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600, flexShrink: 0, transition: 'border-color 0.2s' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--admin-accent)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--admin-border)'; }}
+          >
+            View More Projects <i className="bi bi-box-arrow-up-right" style={{ fontSize: '0.8rem' }} />
+          </motion.a>
+        </div>
+
+        {/* Fan carousel — each slot is a persistent motion.div that animates its position */}
+        <div style={{ position: 'relative', height: 380, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '3rem', perspective: 1200 }}>
+          {slots.map(offset => {
+            const p = getProject(offset);
+            const anim = getAnimate(offset);
+            return (
+              <motion.div
+                key={offset}
+                animate={anim}
+                transition={{ type: 'spring', stiffness: 260, damping: 28 }}
+                onClick={() => offset !== 0 && setIndex(i => i + offset)}
+                whileTap={offset !== 0 ? { scale: 1.12, transition: { duration: 0.15 } } : undefined}
+                style={{
+                  position: 'absolute',
+                  cursor: offset !== 0 ? 'pointer' : 'default',
+                  transformOrigin: 'center center',
+                  transformStyle: 'preserve-3d',
+                }}
+              >
+                <motion.div
+                  animate={{
+                    boxShadow: offset === 0
+                      ? '0 32px 80px rgba(59,130,246,0.35), 0 8px 24px rgba(0,0,0,0.3)'
+                      : '0 8px 32px rgba(0,0,0,0.25)',
+                    borderColor: offset === 0 ? 'rgba(59,130,246,0.5)' : 'var(--admin-border)',
+                  }}
+                  transition={{ duration: 0.4 }}
+                  style={{
+                    width: 340, height: 240, borderRadius: 16, overflow: 'hidden',
+                    border: '1px solid var(--admin-border)',
+                    background: 'var(--admin-card)',
+                  }}
+                >
+                  {p.cover_url
+                    ? <motion.img
+                        key={p.id}
+                        src={p.cover_url} alt={p.title}
+                        initial={{ opacity: 0.6, scale: 1.04 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.4 }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                      />
+                    : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,rgba(59,130,246,0.1),rgba(99,102,241,0.05))', color: 'var(--admin-text-muted)' }}>
+                        <i className="bi bi-image" style={{ fontSize: '2.5rem', opacity: 0.3 }} />
+                      </div>
+                  }
+                </motion.div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Active project info */}
+        <motion.div key={activeIdx} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ textAlign: 'center', maxWidth: 680, margin: '0 auto' }}>
+          <h3 style={{ fontSize: 'clamp(1.2rem,2.5vw,1.65rem)', fontWeight: 800, color: 'var(--admin-text-primary)', marginBottom: 12, letterSpacing: '-0.02em' }}>
+            {current.title}
+          </h3>
+          {current.description && (
+            <p style={{ fontSize: '0.9rem', color: 'var(--admin-text-secondary)', lineHeight: 1.7, marginBottom: 20, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
+              {current.description}
+            </p>
+          )}
+          {current.url && (
+            <a href={current.url} target="_blank" rel="noreferrer"
+              style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--admin-text-primary)', textDecoration: 'none', borderBottom: '1px solid var(--admin-accent)', paddingBottom: 2, transition: 'color 0.2s' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--admin-accent)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--admin-text-primary)'; }}
+            >
+              View Project →
+            </a>
+          )}
+        </motion.div>
+
+      </div>
+    </section>
+  );
+}
+
+// ── Capabilities (Services + Skills) ─────────────────────
+function CapabilitiesSec({ services, skills }: { services: Service[]; skills: Skill[] }) {
+  if (services.length === 0 && skills.length === 0) return null;
+
+  return (
+    <section id="services" style={{
+      padding: '6rem 2rem',
+      background: 'var(--admin-bg-secondary)',
+      overflow: 'hidden',
+    }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 32, alignItems: 'start' }} className="cap-grid">
+
+        {/* ── Left: heading + skill logos ── */}
+        <div style={{ position: 'sticky', top: 120 }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--admin-text-muted)', marginBottom: 12 }}>
+            My Capabilities
+          </div>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }} transition={{ duration: 0.6 }}
+            style={{ fontSize: 'clamp(2rem,4.5vw,3rem)', fontWeight: 900, color: 'var(--admin-text-primary)', letterSpacing: '-0.03em', marginBottom: 16, lineHeight: 1.1 }}
+          >
+            What I Can Do
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }} transition={{ delay: 0.1, duration: 0.6 }}
+            style={{ fontSize: '0.9rem', color: 'var(--admin-text-secondary)', lineHeight: 1.7, marginBottom: 32, maxWidth: 320 }}
+          >
+            Social media strategy, content creation, virtual assistance, and digital operations — all in one place.
+          </motion.p>
+
+          {/* Skill logos — 4 col grid, left 2 cols = first category, right 2 cols = second */}
+          {skills.length > 0 && (() => {
+            const grouped: Record<string, Skill[]> = {};
+            skills.forEach(s => {
+              const cat = s.category || 'General';
+              if (!grouped[cat]) grouped[cat] = [];
+              grouped[cat].push(s);
+            });
+            const cols = Object.values(grouped);
+            const left = cols[0] ?? [];
+            const right = cols[1] ?? [];
+            const rows = Math.max(Math.ceil(left.length / 2), Math.ceil(right.length / 2));
+
+            const Icon = ({ s }: { s: Skill }) => (
+              <motion.div
+                key={s.id}
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.3 }}
+                whileHover={{ scale: 1.12, y: -2 }}
+                title={s.name}
+                style={{
+                  width: 52, height: 52, borderRadius: 14,
+                  background: 'var(--admin-card)',
+                  border: '1px solid var(--admin-border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  overflow: 'hidden', flexShrink: 0,
+                }}
+              >
+                {s.logo_url
+                  ? <img src={s.logo_url} alt={s.name} style={{ width: 30, height: 30, objectFit: 'contain' }} />
+                  : <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--admin-accent)' }}>{s.name.slice(0, 2).toUpperCase()}</span>
+                }
+              </motion.div>
+            );
+
+            return (
+              <motion.div
+                initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
+                viewport={{ once: true }} transition={{ delay: 0.2, duration: 0.5 }}
+                style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}
+              >
+                {/* Left category — 3 columns */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 52px)', gap: 10 }}>
+                  {left.map(s => <Icon key={s.id} s={s} />)}
+                </div>
+                {/* Divider */}
+                <div style={{ width: 1, background: 'var(--admin-border)', alignSelf: 'stretch', margin: '0 4px' }} />
+                {/* Right category — 3 columns */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 52px)', gap: 10 }}>
+                  {right.map(s => <Icon key={s.id} s={s} />)}
+                </div>
+              </motion.div>
+            );
+          })()}
+        </div>
+
+        {/* ── Right: service cards — compact 2-col grid ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }} className="cap-cards">
+          {services.map((s, i) => (
+            <motion.div
+              key={s.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ delay: i * 0.06, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              style={{
+                background: 'var(--admin-card)',
+                border: '1px solid var(--admin-border)',
+                borderRadius: 14,
+                padding: '1.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
+            >
+              {/* Number + icon row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--admin-text-muted)', opacity: 0.3, lineHeight: 1 }}>
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: 'rgba(59,130,246,0.08)',
+                  border: '1px solid rgba(59,130,246,0.15)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <i className={`bi ${s.icon || 'bi-stars'}`} style={{ fontSize: 16, color: 'var(--admin-accent)' }} />
+                </div>
+              </div>
+
+              {/* Title */}
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--admin-text-primary)', lineHeight: 1.3 }}>
+                {s.title}
+              </div>
+
+              {/* Description — clamped to 2 lines */}
+              <p style={{
+                fontSize: '0.78rem', color: 'var(--admin-text-secondary)', lineHeight: 1.6, margin: 0,
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+              }}>
+                {s.description}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      <style>{`
+        @media(max-width: 768px) {
+          .cap-grid { grid-template-columns: 1fr !important; }
+          .cap-cards { grid-template-columns: 1fr 1fr !important; }
+        }
+        @media(max-width: 480px) {
+          .cap-cards { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+// ── About ─────────────────────────────────────────────────
+const TYPEWRITER_WORDS = ['Creative.', 'Strategic.', 'Reliable.', 'Passionate.'];
+
+function AboutSec({
+  profile, contacts, resume, projectCount, certCount,
+}: {
+  profile: Profile;
+  contacts: Contact[];
+  resume: { file_url: string | null } | null;
+  projectCount: number;
+  certCount: number;
+}) {
+  const [wordIdx, setWordIdx] = useState(0);
+  const [displayed, setDisplayed] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  // Typewriter effect
+  useEffect(() => {
+    const word = TYPEWRITER_WORDS[wordIdx];
+    let timeout: ReturnType<typeof setTimeout>;
+    if (!deleting && displayed.length < word.length) {
+      timeout = setTimeout(() => setDisplayed(word.slice(0, displayed.length + 1)), 80);
+    } else if (!deleting && displayed.length === word.length) {
+      timeout = setTimeout(() => setDeleting(true), 1800);
+    } else if (deleting && displayed.length > 0) {
+      timeout = setTimeout(() => setDisplayed(displayed.slice(0, -1)), 45);
+    } else if (deleting && displayed.length === 0) {
+      setDeleting(false);
+      setWordIdx(i => (i + 1) % TYPEWRITER_WORDS.length);
+    }
+    return () => clearTimeout(timeout);
+  }, [displayed, deleting, wordIdx]);
+
+  return (
+    <section id="about" style={{
+      padding: '6rem 2rem',
+      background: 'var(--admin-bg-primary)',
+      overflow: 'hidden',
+    }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+
+        {/* Label + typewriter heading */}
+        <div style={{ marginBottom: '3rem' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--admin-text-muted)', marginBottom: 12 }}>
+            About Me
+          </div>
+          <h2 style={{
+            fontSize: 'clamp(2rem,5.5vw,4rem)', fontWeight: 900,
+            color: 'var(--admin-text-primary)', letterSpacing: '-0.03em',
+            display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.3em',
+            margin: 0, lineHeight: 1.1,
+          }}>
+            {profile.full_name?.split(' ')[0] || 'Hi'} is&nbsp;
+            <span style={{ color: 'var(--admin-accent)', whiteSpace: 'nowrap' }}>
+              {displayed}
+              <motion.span
+                animate={{ opacity: [1, 0, 1] }}
+                transition={{ repeat: Infinity, duration: 0.9 }}
+                style={{ display: 'inline-block', width: 3, height: '0.8em', background: 'var(--admin-accent)', borderRadius: 2, marginLeft: 3, verticalAlign: 'middle' }}
+              />
+            </span>
+          </h2>
+        </div>
+
+        {/* Main content grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 48, alignItems: 'start' }} className="about-grid-v2">
+
+          {/* Left — avatar + stats */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Avatar */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
+              style={{ position: 'relative', width: 'fit-content' }}
+            >
+              <div style={{
+                width: 120, height: 120, borderRadius: '50%', overflow: 'hidden',
+                border: '3px solid var(--admin-accent)',
+                background: 'rgba(59,130,246,0.1)',
+              }}>
+                {profile.avatar_url
+                  ? <img src={profile.avatar_url} alt={profile.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <i className="bi bi-person-fill" style={{ fontSize: '3.5rem', color: 'var(--admin-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }} />
+                }
+              </div>
+              {/* Verified badge */}
+              <div style={{
+                position: 'absolute', bottom: 4, right: 4,
+                width: 24, height: 24, borderRadius: '50%',
+                background: 'var(--admin-accent)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '2px solid var(--admin-bg-primary)',
+              }}>
+                <i className="bi bi-check-lg" style={{ fontSize: 11, color: '#fff' }} />
+              </div>
+            </motion.div>
+
+            {/* Name */}
+            <div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--admin-text-primary)', marginBottom: 2 }}>
+                {profile.full_name}
+              </div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--admin-text-muted)' }}>{profile.tagline}</div>
+            </div>
+
+            {/* Stats row */}
+            <div style={{ display: 'flex', gap: 20 }}>
+              {[
+                { label: 'Projects', value: `${projectCount}+` },
+                { label: 'Certifications', value: certCount },
+                ...(profile.years_experience ? [{ label: 'Years Exp.', value: `${profile.years_experience}+` }] : []),
+              ].map(stat => (
+                <div key={stat.label}>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--admin-text-primary)', lineHeight: 1 }}>{stat.value}</div>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--admin-text-muted)', marginTop: 3 }}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Social links */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {contacts.filter(c => socialIconMap[c.key] && c.value).map(c => (
+                <motion.a
+                  key={c.key}
+                  href={c.key === 'email' ? `mailto:${c.value}` : c.value}
+                  target="_blank" rel="noreferrer"
+                  whileHover={{ scale: 1.15, y: -2 }}
+                  style={{
+                    width: 38, height: 38, borderRadius: '50%',
+                    border: '1px solid var(--admin-border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--admin-text-secondary)', fontSize: 16, textDecoration: 'none',
+                    transition: 'border-color 0.2s, color 0.2s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--admin-accent)'; (e.currentTarget as HTMLElement).style.color = 'var(--admin-accent)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--admin-border)'; (e.currentTarget as HTMLElement).style.color = 'var(--admin-text-secondary)'; }}
+                >
+                  <i className={`bi ${socialIconMap[c.key]}`} />
                 </motion.a>
               ))}
             </div>
-          </motion.div>
-        </div>
-        <div className="about-profile-card">
-          <ProfileCard avatar_url={profile.avatar_url} full_name={profile.full_name} resume={resume}/>
-        </div>
-      </div>
-      <style>{`@media(max-width:768px){.about-grid{grid-template-columns:1fr!important}.about-profile-card{display:none!important}}`}</style>
-    </Sec>
-  );
-}
-
-// ── Services ─────────────────────────────────────────────
-function ServicesSec({items}:{items:Service[]}) {
-  return (
-    <Sec id="services">
-      <SectionTitle label="Services" title="What I Offer" sub="Comprehensive social media and virtual assistance solutions"/>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:24}}>
-        {items.map((s,i)=>(
-          <motion.div key={s.id} {...fadeUp} transition={{...fadeUp.transition,delay:i*0.08}} whileHover={{y:-4,borderColor:'var(--admin-accent)'}} style={{padding:24,background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:14,transition:'border-color 0.2s'}}>
-            <div style={{width:48,height:48,background:'rgba(59,130,246,0.1)',border:'1px solid rgba(59,130,246,0.2)',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',color:'var(--admin-accent)',fontSize:22,marginBottom:16}}><i className={`bi ${s.icon||'bi-box-seam-fill'}`}/></div>
-            <h3 style={{fontSize:'1rem',fontWeight:700,color:'var(--admin-text-primary)',marginBottom:8}}>{s.title}</h3>
-            <p style={{fontSize:'0.87rem',color:'var(--admin-text-secondary)',lineHeight:1.6}}>{s.description}</p>
-          </motion.div>
-        ))}
-      </div>
-    </Sec>
-  );
-}
-
-// ── Skill/Tool Grid ──────────────────────────────────────
-function SkillGrid({id,label,title,items}:{id:string;label:string;title:string;items:Skill[]}) {
-  const cats=['all',...Array.from(new Set(items.map(s=>s.category).filter(Boolean)))];
-  const [cat,setCat]=useState('all');
-  const filtered=cat==='all'?items:items.filter(s=>s.category===cat);
-  return (
-    <Sec id={id}>
-      <SectionTitle label={label} title={title}/>
-      <div style={{display:'flex',gap:8,marginBottom:28,flexWrap:'wrap'}}>
-        {cats.map(c=><button key={c} onClick={()=>setCat(c)} style={{padding:'6px 16px',borderRadius:99,border:`1px solid ${cat===c?'var(--admin-accent)':'var(--admin-border)'}`,background:cat===c?'rgba(59,130,246,0.12)':'transparent',color:cat===c?'var(--admin-accent)':'var(--admin-text-muted)',fontSize:'0.8rem',fontWeight:600,cursor:'pointer',fontFamily:'inherit',textTransform:'capitalize'}}>{c==='all'?`All (${items.length})`:c}</button>)}
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:14}}>
-        {filtered.map((s,i)=>(
-          <motion.div key={s.id} initial={{opacity:0,scale:0.85}} whileInView={{opacity:1,scale:1}} viewport={{once:true}} transition={{delay:i*0.04,duration:0.4}} whileHover={{scale:1.06,borderColor:'var(--admin-accent)'}} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:14,background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:12,textAlign:'center',transition:'border-color 0.2s'}}>
-            {s.logo_url?<img src={s.logo_url} alt={s.name} style={{width:44,height:44,objectFit:'contain'}}/>:<div style={{width:44,height:44,borderRadius:10,background:'rgba(59,130,246,0.1)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--admin-accent)',fontWeight:800,fontSize:18}}>{s.name.charAt(0)}</div>}
-            <span style={{fontSize:'0.75rem',color:'var(--admin-text-secondary)',fontWeight:600,lineHeight:1.3}}>{s.name}</span>
-          </motion.div>
-        ))}
-      </div>
-    </Sec>
-  );
-}
-
-
-// ── Projects ─────────────────────────────────────────────
-function ProjectsSec({items,lb}:{items:Project[];lb:(s:LightboxState)=>void}) {
-  const pub=items.filter(p=>p.status==='published');
-  return (
-    <Sec id="projects">
-      <SectionTitle label="Portfolio" title="Recent Projects" sub="Showcase of completed work"/>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:24}}>
-        {pub.map((p,i)=>(
-          <motion.div key={p.id} {...fadeUp} transition={{...fadeUp.transition,delay:i*0.08}} whileHover={{y:-4}} onClick={()=>p.cover_url&&lb({open:true,image:p.cover_url,title:p.title,desc:p.description||''})} style={{borderRadius:14,overflow:'hidden',border:'1px solid var(--admin-border)',background:'var(--admin-card)',cursor:p.cover_url?'zoom-in':'default'}}>
-            <div style={{width:'100%',paddingBottom:'56.25%',position:'relative',background:'var(--admin-bg-secondary)'}}>
-              {p.cover_url&&<img src={p.cover_url} alt={p.title} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}} loading="lazy"/>}
-            </div>
-            <div style={{padding:16}}>
-              <h3 style={{fontSize:'0.95rem',fontWeight:700,color:'var(--admin-text-primary)',marginBottom:6}}>{p.title}</h3>
-              {p.description&&<p style={{fontSize:'0.82rem',color:'var(--admin-text-secondary)',lineHeight:1.5,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{p.description}</p>}
-              {p.url&&<a href={p.url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:'0.75rem',color:'var(--admin-accent)',display:'inline-flex',alignItems:'center',gap:4,marginTop:8,textDecoration:'none'}}><i className="bi bi-box-arrow-up-right"/> View</a>}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </Sec>
-  );
-}
-
-// ── Gallery ──────────────────────────────────────────────
-function GallerySec({items,lb}:{items:GalleryItem[];lb:(s:LightboxState)=>void}) {
-  const cats=Array.from(new Set(items.map(g=>g.category_name).filter(Boolean))) as string[];
-  const [cat,setCat]=useState('');
-  const filtered=cat?items.filter(g=>g.category_name===cat):items;
-  return (
-    <Sec id="gallery">
-      <SectionTitle label="Gallery" title="Photos of Me" sub="A glimpse into my life and moments"/>
-      {cats.length>0&&<div style={{display:'flex',gap:8,marginBottom:28,flexWrap:'wrap'}}>
-        <button onClick={()=>setCat('')} style={{padding:'6px 16px',borderRadius:99,border:`1px solid ${cat===''?'var(--admin-accent)':'var(--admin-border)'}`,background:cat===''?'rgba(59,130,246,0.12)':'transparent',color:cat===''?'var(--admin-accent)':'var(--admin-text-muted)',fontSize:'0.8rem',fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>All</button>
-        {cats.map(c=><button key={c} onClick={()=>setCat(c===cat?'':c)} style={{padding:'6px 16px',borderRadius:99,border:`1px solid ${cat===c?'var(--admin-accent)':'var(--admin-border)'}`,background:cat===c?'rgba(59,130,246,0.12)':'transparent',color:cat===c?'var(--admin-accent)':'var(--admin-text-muted)',fontSize:'0.8rem',fontWeight:600,cursor:'pointer',fontFamily:'inherit',textTransform:'capitalize'}}>{c}</button>)}
-      </div>}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:14}}>
-        {filtered.map((g,i)=>(
-          <motion.div key={g.id} initial={{opacity:0,scale:0.95}} whileInView={{opacity:1,scale:1}} viewport={{once:true}} transition={{delay:i*0.04,duration:0.4}} whileHover={{scale:1.02}} onClick={()=>lb({open:true,image:g.image_url,title:g.title||'',desc:g.description||''})} style={{position:'relative',aspectRatio:'1/1',overflow:'hidden',borderRadius:12,cursor:'zoom-in',border:'1px solid var(--admin-border)'}}>
-            <img src={g.image_url} alt={g.title||''} style={{width:'100%',height:'100%',objectFit:'cover'}} loading="lazy"/>
-            <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,0.72) 0%,rgba(0,0,0,0.2) 50%,transparent 100%)',padding:'0.75rem',display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
-              {g.title&&<div style={{fontSize:'0.85rem',fontWeight:700,color:'#fff'}}>{g.title}</div>}
-              {g.description&&<div style={{fontSize:'0.72rem',color:'rgba(255,255,255,0.75)',marginTop:2}}>{g.description}</div>}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </Sec>
-  );
-}
-
-// ── Resume ───────────────────────────────────────────────
-function ResumeSec({resume}:{resume:Resume|null}) {
-  if(!resume) return null;
-  return (
-    <Sec id="resume">
-      <SectionTitle label="Resume" title={resume.title||'My Resume'} sub={resume.description||undefined}/>
-      <motion.div {...fadeUp} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:28}}>
-        {resume.thumbnail_url&&(
-          <motion.div
-            whileHover={{scale:1.02,y:-4}}
-            transition={{type:'spring',stiffness:300,damping:20}}
-            style={{borderRadius:16,overflow:'hidden',border:'1px solid var(--admin-border)',boxShadow:'var(--admin-shadow)',maxWidth:480,width:'100%'}}
-          >
-            <img src={resume.thumbnail_url} alt={resume.title||'Resume'} style={{width:'100%',display:'block',objectFit:'cover'}}/>
-          </motion.div>
-        )}
-        {!resume.thumbnail_url&&(
-          <div style={{width:200,height:260,borderRadius:16,border:'1px solid var(--admin-border)',background:'var(--admin-card)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12,color:'var(--admin-text-muted)'}}>
-            <i className="bi bi-file-earmark-text" style={{fontSize:'3rem',color:'var(--admin-accent)',opacity:0.5}}/>
-            <span style={{fontSize:'0.82rem'}}>No thumbnail yet</span>
           </div>
-        )}
-        {resume.file_url&&(
-          <motion.a
-            href={resume.file_url}
-            target="_blank"
-            rel="noreferrer"
-            download
-            whileHover={{scale:1.03,y:-2}}
-            whileTap={{scale:0.98}}
-            style={{display:'inline-flex',alignItems:'center',gap:10,padding:'13px 32px',background:'var(--admin-accent)',color:'#fff',borderRadius:12,textDecoration:'none',fontSize:'0.95rem',fontWeight:700,boxShadow:'var(--admin-shadow)'}}
-          >
-            <i className="bi bi-download"/>
-            Download Resume
-          </motion.a>
-        )}
-      </motion.div>
-    </Sec>
-  );
-}
 
-// ── Certifications ───────────────────────────────────────
-function CertsSec({items,lb}:{items:Certification[];lb:(s:LightboxState)=>void}) {
-  return (
-    <Sec id="certifications">
-      <SectionTitle label="Credentials" title="Certifications" sub="Professional qualifications and achievements"/>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(360px,1fr))',gap:24}}>
-        {items.map((c,i)=>{
-          const exp=isExpired(c.expiry_date);
-          return (
-            <motion.div key={c.id} {...fadeUp} transition={{...fadeUp.transition,delay:i*0.08}} style={{background:'var(--admin-card)',border:`1px solid ${exp?'rgba(248,113,113,0.25)':'var(--admin-border)'}`,borderRadius:14,overflow:'hidden'}}>
-              <div onClick={()=>c.image_url&&lb({open:true,image:c.image_url,title:c.title,desc:c.issuer||''})} style={{width:'100%',paddingBottom:'72%',position:'relative',background:'var(--admin-bg-secondary)',cursor:c.image_url?'zoom-in':'default'}}>
-                {c.image_url&&<img src={c.image_url} alt={c.title} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}} loading="lazy"/>}
-                {!c.image_url&&<div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}><i className="bi bi-award-fill" style={{fontSize:'2.5rem',color:'rgba(59,130,246,0.2)'}}/></div>}
-                {exp&&<div style={{position:'absolute',top:8,right:8,background:'rgba(239,68,68,0.9)',color:'#fff',padding:'3px 10px',borderRadius:99,fontSize:'0.65rem',fontWeight:700}}>EXPIRED</div>}
+          {/* Right — bio + currently + resume */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+            {/* Bio */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ duration: 0.5 }}
+            >
+              <p style={{ fontSize: '1rem', color: 'var(--admin-text-secondary)', lineHeight: 1.8, margin: 0 }}>
+                {profile.bio}
+              </p>
+              {resume?.file_url && (
+                <a href={resume.file_url} target="_blank" rel="noreferrer" download
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 20, fontSize: '0.88rem', fontWeight: 700, color: 'var(--admin-text-primary)', textDecoration: 'none', borderBottom: '1px solid var(--admin-accent)', paddingBottom: 2, transition: 'color 0.2s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--admin-accent)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--admin-text-primary)'; }}
+                >
+                  Download my resume <i className="bi bi-download" style={{ fontSize: '0.8rem' }} />
+                </a>
+              )}
+            </motion.div>
+
+            {/* Currently bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ delay: 0.15, duration: 0.5 }}
+              style={{
+                padding: '1.25rem 1.5rem',
+                background: 'var(--admin-card)',
+                border: '1px solid var(--admin-border)',
+                borderRadius: 14,
+              }}
+            >
+              <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--admin-text-muted)', marginBottom: 16 }}>
+                Currently
               </div>
-              <div style={{padding:'1rem'}}>
-                <h3 style={{fontSize:'0.92rem',fontWeight:700,color:'var(--admin-text-primary)',marginBottom:4}}>{c.title}</h3>
-                {c.issuer&&<div style={{fontSize:'0.78rem',color:'var(--admin-text-muted)',marginBottom:6,display:'flex',alignItems:'center',gap:4}}><i className="bi bi-building"/>{c.issuer}</div>}
-                <div style={{fontSize:'0.72rem',color:'var(--admin-text-muted)',marginBottom:10,display:'flex',gap:12,flexWrap:'wrap'}}>
-                  {fmtDate(c.issue_date)&&<span><i className="bi bi-calendar-check" style={{marginRight:3}}/>Issued {fmtDate(c.issue_date)}</span>}
-                  {fmtDate(c.expiry_date)&&<span style={{color:exp?'#f87171':undefined}}><i className="bi bi-calendar-x" style={{marginRight:3}}/>Expires {fmtDate(c.expiry_date)}</span>}
-                </div>
-                {c.credential_url&&<a href={c.credential_url} target="_blank" rel="noreferrer" style={{fontSize:'0.75rem',color:'var(--admin-accent)',display:'inline-flex',alignItems:'center',gap:4,textDecoration:'none'}}><i className="bi bi-patch-check-fill"/>View Credential</a>}
+              <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+                {[
+                  { icon: 'bi-code-slash', label: 'Building', sub: 'Social media & web projects' },
+                  { icon: 'bi-graph-up-arrow', label: 'Growing', sub: 'Client brands & presence' },
+                  { icon: 'bi-lightbulb', label: 'Learning', sub: 'New tools & strategies' },
+                ].map(item => (
+                  <div key={item.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                      background: 'rgba(59,130,246,0.08)',
+                      border: '1px solid rgba(59,130,246,0.15)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <i className={`bi ${item.icon}`} style={{ fontSize: 15, color: 'var(--admin-accent)' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--admin-text-primary)' }}>{item.label}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--admin-text-muted)' }}>{item.sub}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </motion.div>
-          );
-        })}
-      </div>
-    </Sec>
-  );
-}
 
-// ── Testimonials ─────────────────────────────────────────
-function TestimonialsSec({items}:{items:Testimonial[]}) {
-  if(items.length===0) return null;
-  return (
-    <Sec id="testimonials">
-      <SectionTitle label="Testimonials" title="What Clients Say" sub="Feedback from people I've worked with"/>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:24}}>
-        {items.map((t,i)=>(
-          <motion.div key={t.id} {...fadeUp} transition={{...fadeUp.transition,delay:i*0.07}}
-            style={{background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:14,padding:'1.5rem',display:'flex',flexDirection:'column',gap:'0.85rem'}}>
-            {/* Quote icon */}
-            <i className="bi bi-quote" style={{fontSize:'1.8rem',color:'var(--admin-accent)',opacity:0.5,lineHeight:1}}/>
-            {/* Message */}
-            <p style={{fontSize:'0.9rem',color:'var(--admin-text-secondary)',lineHeight:1.7,fontStyle:'italic',flex:1,margin:0}}>
-              &ldquo;{t.message}&rdquo;
-            </p>
-            {/* Stars */}
-            <div style={{display:'flex',gap:'0.2rem'}}>
-              {[1,2,3,4,5].map(s=>(
-                <i key={s} className={`bi bi-star${s<=t.rating?'-fill':''}`}
-                  style={{color:s<=t.rating?'#facc15':'var(--admin-border-strong)',fontSize:'0.85rem'}}/>
-              ))}
-            </div>
-            {/* Author */}
-            <div style={{display:'flex',alignItems:'center',gap:'0.75rem',paddingTop:'0.75rem',borderTop:'1px solid var(--admin-border)'}}>
-              <div style={{width:40,height:40,borderRadius:'50%',overflow:'hidden',flexShrink:0,background:'rgba(59,130,246,0.1)',border:'2px solid rgba(59,130,246,0.2)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                {t.client_avatar_url
-                  ?<img src={t.client_avatar_url} alt={t.client_name} style={{width:'100%',height:'100%',objectFit:'cover'}} loading="lazy"/>
-                  :<i className="bi bi-person-fill" style={{color:'var(--admin-accent)',fontSize:'1.1rem'}}/>}
-              </div>
-              <div>
-                <div style={{fontSize:'0.88rem',fontWeight:700,color:'var(--admin-text-primary)'}}>{t.client_name}</div>
-                {t.client_title&&<div style={{fontSize:'0.72rem',color:'var(--admin-text-muted)'}}>{t.client_title}</div>}
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </Sec>
-  );
-}
-
-// ── Contact ──────────────────────────────────────────────
-function ContactSec({contacts}:{contacts:Contact[]}) {
-  const [form,setForm]=useState({name:'',email:'',subject:'',message:''});
-  const [sending,setSending]=useState(false);
-  const [fb,setFb]=useState<{ok:boolean;msg:string}|null>(null);
-  const inpStyle:React.CSSProperties={width:'100%',padding:'11px 14px',background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:8,color:'var(--admin-text-primary)',fontSize:'0.9rem',fontFamily:'inherit',outline:'none'};
-  const submit=async(e:React.FormEvent)=>{
-    e.preventDefault(); setSending(true);
-    try{
-      const r=await fetch('/api/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sender_name:form.name,sender_email:form.email,subject:form.subject,body:form.message})});
-      setFb(r.ok?{ok:true,msg:'Message sent!'}:{ok:false,msg:'Failed to send. Please try again.'});
-      if(r.ok)setForm({name:'',email:'',subject:'',message:''});
-    }catch{setFb({ok:false,msg:'An error occurred.'});}
-    setSending(false); setTimeout(()=>setFb(null),3000);
-  };
-  return (
-    <Sec id="contact">
-      <SectionTitle label="Get In Touch" title="Contact Me" sub="Let's discuss your next project"/>
-      <motion.div {...fadeUp} className="contact-grid" style={{display:'grid',gridTemplateColumns:'1fr 1.4fr',gap:48}}>
-        <div>
-          <h3 style={{fontSize:'1rem',fontWeight:700,color:'var(--admin-text-primary)',marginBottom:20}}>Contact Information</h3>
-          {contacts.filter(c=>c.value&&c.key!=='website').map(c=>(
-            <motion.a key={c.key} href={c.key==='email'?`mailto:${c.value}`:c.value} target="_blank" rel="noreferrer" whileHover={{x:6}} style={{display:'flex',alignItems:'center',gap:12,marginBottom:12,padding:'10px 14px',background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:10,textDecoration:'none',color:'var(--admin-text-primary)',transition:'all 0.2s'}}>
-              <i className={`bi ${socialIconMap[c.key]||'bi-link-45deg'}`} style={{fontSize:18,color:'var(--admin-accent)',flexShrink:0}}/>
-              <div><div style={{fontSize:'0.7rem',fontWeight:700,textTransform:'uppercase',color:'var(--admin-text-muted)'}}>{c.label}</div><div style={{fontSize:'0.88rem',fontWeight:600}}>{c.value}</div></div>
-            </motion.a>
-          ))}
-        </div>
-        <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:14}}>
-          <input type="text" placeholder="Your Name" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} required style={inpStyle}/>
-          <input type="email" placeholder="Your Email" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} required style={inpStyle}/>
-          <input type="text" placeholder="Subject" value={form.subject} onChange={e=>setForm(f=>({...f,subject:e.target.value}))} style={inpStyle}/>
-          <textarea placeholder="Your Message" value={form.message} onChange={e=>setForm(f=>({...f,message:e.target.value}))} required rows={5} style={{...inpStyle,resize:'vertical' as const}}/>
-          {fb&&<div style={{padding:'10px 14px',borderRadius:8,fontSize:'0.85rem',fontWeight:600,background:fb.ok?'rgba(74,222,128,0.1)':'rgba(248,113,113,0.1)',color:fb.ok?'#4ade80':'#f87171',border:`1px solid ${fb.ok?'#4ade80':'#f87171'}`}}>{fb.msg}</div>}
-          <motion.button type="submit" disabled={sending} whileHover={{scale:1.02}} whileTap={{scale:0.98}} style={{padding:'12px',background:'var(--admin-accent)',color:'#fff',border:'none',borderRadius:10,fontSize:'0.95rem',fontWeight:700,cursor:sending?'not-allowed':'pointer',opacity:sending?0.7:1,fontFamily:'inherit'}}>{sending?'Sending…':'Send Message'}</motion.button>
-        </form>
-      </motion.div>
-      <style>{`@media(max-width:768px){.contact-grid{grid-template-columns:1fr!important}}`}</style>
-    </Sec>
-  );
-}
-
-// ── Footer ───────────────────────────────────────────────
-function Footer({siteName,contacts}:{siteName:string;contacts:Contact[]}) {
-  const go=(id:string)=>document.getElementById(id)?.scrollIntoView({behavior:'smooth'});
-  return (
-    <footer style={{position:'relative',zIndex:1,borderTop:'1px solid var(--admin-border)',padding:'3rem 2rem',marginTop:'3rem'}}>
-      <div style={{maxWidth:1200,margin:'0 auto',display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:32}}>
-        <div>
-          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
-            <img src="/logo.png" alt="MakiSync" style={{width:32,height:32,borderRadius:8,objectFit:'contain'}} onError={e=>{const t=e.target as HTMLImageElement;t.style.display='none';}}/>
-            <span style={{fontSize:'0.95rem',fontWeight:700,color:'var(--admin-text-primary)'}}>{siteName}</span>
-          </div>
-          <p style={{fontSize:'0.82rem',color:'var(--admin-text-muted)',lineHeight:1.5}}>Social Media Manager & Virtual Assistant</p>
-        </div>
-        <div>
-          <h4 style={{fontSize:'0.8rem',fontWeight:700,textTransform:'uppercase',color:'var(--admin-text-primary)',marginBottom:12,letterSpacing:'0.08em'}}>Quick Links</h4>
-          <div style={{display:'flex',flexDirection:'column',gap:8}}>
-            {['about','services','projects','gallery','contact'].map(id=><button key={id} onClick={()=>go(id)} style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.82rem',color:'var(--admin-text-secondary)',textAlign:'left',textTransform:'capitalize',fontFamily:'inherit',padding:0,transition:'color 0.15s'}}>{id}</button>)}
+            {/* Location */}
+            {profile.location && (
+              <motion.div
+                initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
+                viewport={{ once: true }} transition={{ delay: 0.2, duration: 0.4 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--admin-text-muted)', fontSize: '0.85rem' }}
+              >
+                <i className="bi bi-geo-alt-fill" style={{ color: 'var(--admin-accent)', fontSize: 14 }} />
+                {profile.location}
+              </motion.div>
+            )}
           </div>
         </div>
-        <div>
-          <h4 style={{fontSize:'0.8rem',fontWeight:700,textTransform:'uppercase',color:'var(--admin-text-primary)',marginBottom:12,letterSpacing:'0.08em'}}>Connect</h4>
-          <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-            {contacts.filter(c=>socialIconMap[c.key]&&c.value).map(c=>(
-              <a key={c.key} href={c.key==='email'?`mailto:${c.value}`:c.value} target="_blank" rel="noreferrer" style={{width:36,height:36,borderRadius:'50%',border:'1px solid var(--admin-border)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--admin-text-primary)',fontSize:15,textDecoration:'none',transition:'all 0.2s'}}
-                onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='var(--admin-accent)';(e.currentTarget as HTMLElement).style.color='#fff';}}
-                onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent';(e.currentTarget as HTMLElement).style.color='var(--admin-text-primary)';}}>
-                <i className={`bi ${socialIconMap[c.key]}`}/>
-              </a>
+      </div>
+
+      <style>{`
+        @media(max-width: 768px) {
+          .about-grid-v2 { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </section>
+  );
+}
+
+// ── Recognition (Gallery cards + Certifications) ─────────
+function RecognitionSec({ gallery, certs }: { gallery: GalleryItem[]; certs: Certification[] }) {
+  const [lightbox, setLightbox] = useState<{ open: boolean; image: string; title: string }>({ open: false, image: '', title: '' });
+  const [dealt, setDealt] = useState(false);
+
+  // Trigger deal animation when section enters view
+  const sectionRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setDealt(true); }, { threshold: 0.2 });
+    if (sectionRef.current) obs.observe(sectionRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightbox(s => ({ ...s, open: false })); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, []);
+
+  const photos = certs.slice(0, 8);
+
+  // Dynamically compute fan positions centered around 0
+  const totalCards = photos.length;
+  const spreadPerCard = 120; // px between cards
+  const rotatePerCard = 8;   // degrees between cards
+  const cardPositions = photos.map((_, i) => {
+    const offset = i - (totalCards - 1) / 2; // center the fan
+    return {
+      x: offset * spreadPerCard,
+      y: -Math.abs(offset) * 18,
+      rotate: offset * rotatePerCard,
+    };
+  });
+
+  return (
+    <section id="recognition" ref={sectionRef} style={{
+      padding: '6rem 2rem',
+      background: 'var(--admin-bg-secondary)',
+    }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: '4rem' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--admin-text-muted)', marginBottom: 12 }}>
+            Recognition
+          </div>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }} transition={{ duration: 0.6 }}
+            style={{ fontSize: 'clamp(2rem,5vw,3.5rem)', fontWeight: 900, color: 'var(--admin-text-primary)', letterSpacing: '-0.03em', margin: 0 }}
+          >
+            Awards and Achievements
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
+            viewport={{ once: true }} transition={{ delay: 0.1, duration: 0.5 }}
+            style={{ fontSize: '0.9rem', color: 'var(--admin-text-muted)', marginTop: 10 }}
+          >
+            A collection of certifications and memorable moments.
+          </motion.p>
+        </div>
+
+        {/* Two-col layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 48, alignItems: 'start' }} className="recog-grid">
+
+          {/* ── Left: casino card fan ── */}
+          <div style={{ position: 'relative', height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {/* All cards positioned absolute from center of this div */}
+            {photos.map((c, i) => {
+              const pos = cardPositions[i] ?? { x: 0, y: 0, rotate: 0 };
+              return (
+                <motion.div
+                  key={c.id}
+                  initial={{ x: 0, y: 0, rotate: 0, opacity: 0 }}
+                  animate={dealt ? {
+                    x: pos.x,
+                    y: pos.y,
+                    rotate: pos.rotate,
+                    opacity: 1,
+                  } : { x: 0, y: 0, rotate: 0, opacity: 0 }}
+                  transition={{ delay: i * 0.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                  whileHover={{ y: pos.y - 24, scale: 1.08, zIndex: 20, transition: { duration: 0.2 } }}
+                  onClick={() => c.image_url && setLightbox({ open: true, image: c.image_url, title: c.title })}
+                  style={{
+                    position: 'absolute',
+                    width: 200,
+                    height: 270,
+                    marginLeft: -100, // center the card on the anchor
+                    marginTop: -135,
+                    borderRadius: 14,
+                    overflow: 'hidden',
+                    border: '3px solid var(--admin-card)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+                    cursor: c.image_url ? 'zoom-in' : 'default',
+                    transformOrigin: 'center center',
+                    zIndex: i,
+                    background: 'var(--admin-card)',
+                  }}
+                >
+                  {c.image_url
+                    ? <img src={c.image_url} alt={c.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', pointerEvents: 'none' }} />
+                    : <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '1rem', textAlign: 'center' }}>
+                        <i className="bi bi-award-fill" style={{ fontSize: '2rem', color: 'var(--admin-accent)', opacity: 0.5 }} />
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--admin-text-muted)', lineHeight: 1.3 }}>{c.title}</span>
+                      </div>
+                  }
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* ── Right: certification list ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {certs.map((c, i) => (
+              <motion.div
+                key={c.id}
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.07, duration: 0.4 }}
+                whileHover={{ borderColor: 'var(--admin-accent)' }}
+                onClick={() => c.credential_url && window.open(c.credential_url, '_blank')}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 12, padding: '1rem 1.25rem',
+                  background: 'var(--admin-card)',
+                  border: '1px solid var(--admin-border)',
+                  borderRadius: 12,
+                  cursor: c.credential_url ? 'pointer' : 'default',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                    background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <i className="bi bi-patch-check-fill" style={{ fontSize: 16, color: 'var(--admin-accent)' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--admin-text-primary)', lineHeight: 1.3 }}>{c.title}</div>
+                    {c.issuer && <div style={{ fontSize: '0.72rem', color: 'var(--admin-text-muted)', marginTop: 2 }}>{c.issuer}</div>}
+                  </div>
+                </div>
+                {c.credential_url && <i className="bi bi-box-arrow-up-right" style={{ fontSize: 13, color: 'var(--admin-text-muted)', flexShrink: 0 }} />}
+              </motion.div>
             ))}
           </div>
         </div>
       </div>
-      <div style={{maxWidth:1200,margin:'2rem auto 0',paddingTop:'1.5rem',borderTop:'1px solid var(--admin-border)',textAlign:'center',fontSize:'0.8rem',color:'var(--admin-text-muted)'}}>
-        © 2026 {siteName}. All rights reserved.
-      </div>
-    </footer>
+
+      {/* Lightbox */}
+      {lightbox.open && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          onClick={() => setLightbox(s => ({ ...s, open: false }))}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', cursor: 'zoom-out' }}
+        >
+          <motion.div initial={{ scale: 0.85 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <img src={lightbox.image} alt={lightbox.title} style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: 12, objectFit: 'contain' }} />
+            <button onClick={() => setLightbox(s => ({ ...s, open: false }))} style={{ position: 'absolute', top: 12, right: 12, width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', border: 'none', color: '#fff', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="bi bi-x-lg" />
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+
+      <style>{`
+        @media(max-width: 768px) {
+          .recog-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </section>
   );
 }
 
-// ── Lightbox ─────────────────────────────────────────────
-function Lightbox({state,onClose}:{state:LightboxState;onClose:()=>void}) {
-  useEffect(()=>{
-    const h=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose();};
-    document.addEventListener('keydown',h); return()=>document.removeEventListener('keydown',h);
-  },[onClose]);
-  if(!state.open) return null;
+// ── Gallery ───────────────────────────────────────────────
+function GallerySec({ gallery }: { gallery: GalleryItem[] }) {
+  const [active, setActive] = useState('');
+  const [lightbox, setLightbox] = useState<{ open: boolean; image: string; title: string; desc: string }>({ open: false, image: '', title: '', desc: '' });
+
+  if (gallery.length === 0) return null;
+
+  const cats = Array.from(new Set(gallery.map(g => g.category_name).filter(Boolean))) as string[];
+  const filtered = active ? gallery.filter(g => g.category_name === active) : gallery;
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightbox(s => ({ ...s, open: false })); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, []);
+
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.9)',backdropFilter:'blur(8px)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem',cursor:'zoom-out'}}>
-      <motion.div initial={{scale:0.85}} animate={{scale:1}} onClick={e=>e.stopPropagation()} style={{position:'relative',maxWidth:'90vw',maxHeight:'90vh'}}>
-        <img src={state.image} alt={state.title} style={{maxWidth:'100%',maxHeight:'90vh',borderRadius:12,objectFit:'contain'}}/>
-        <button onClick={onClose} style={{position:'absolute',top:12,right:12,width:36,height:36,borderRadius:'50%',background:'rgba(255,255,255,0.12)',border:'none',color:'#fff',fontSize:'1rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><i className="bi bi-x-lg"/></button>
-        {state.title&&<div style={{marginTop:12,textAlign:'center'}}><h3 style={{fontSize:'1rem',fontWeight:700,color:'#fff',marginBottom:4}}>{state.title}</h3>{state.desc&&<p style={{fontSize:'0.85rem',color:'rgba(255,255,255,0.75)'}}>{state.desc}</p>}</div>}
-      </motion.div>
-    </motion.div>
+    <section id="gallery" style={{ padding: '6rem 2rem', background: 'var(--admin-bg-secondary)' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '2.5rem', flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--admin-text-muted)', marginBottom: 8 }}>
+              Creative Work
+            </div>
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ duration: 0.6 }}
+              style={{ fontSize: 'clamp(2rem,4.5vw,3rem)', fontWeight: 900, color: 'var(--admin-text-primary)', letterSpacing: '-0.03em', margin: 0 }}
+            >
+              Gallery
+            </motion.h2>
+          </div>
+
+          {/* Category filters */}
+          {cats.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={() => setActive('')}
+                style={{ padding: '6px 16px', borderRadius: 99, border: `1px solid ${active === '' ? 'var(--admin-accent)' : 'var(--admin-border)'}`, background: active === '' ? 'rgba(59,130,246,0.12)' : 'transparent', color: active === '' ? 'var(--admin-accent)' : 'var(--admin-text-muted)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+                All
+              </button>
+              {cats.map(c => (
+                <button key={c} onClick={() => setActive(c === active ? '' : c)}
+                  style={{ padding: '6px 16px', borderRadius: 99, border: `1px solid ${active === c ? 'var(--admin-accent)' : 'var(--admin-border)'}`, background: active === c ? 'rgba(59,130,246,0.12)' : 'transparent', color: active === c ? 'var(--admin-accent)' : 'var(--admin-text-muted)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize', transition: 'all 0.2s' }}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Masonry-style grid */}
+        <div style={{ columns: '3 280px', gap: 14 }}>
+          {filtered.map((g, i) => (
+            <motion.div
+              key={g.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05, duration: 0.4 }}
+              whileHover={{ scale: 1.02 }}
+              onClick={() => setLightbox({ open: true, image: g.image_url, title: g.title || '', desc: g.description || '' })}
+              style={{
+                breakInside: 'avoid', marginBottom: 14,
+                borderRadius: 14, overflow: 'hidden',
+                border: '1px solid var(--admin-border)',
+                cursor: 'zoom-in', position: 'relative', display: 'block',
+              }}
+            >
+              <img src={g.image_url} alt={g.title || ''} style={{ width: '100%', display: 'block', objectFit: 'cover' }} loading="lazy" />
+              {(g.title || g.description) && (
+                <motion.div
+                  initial={{ opacity: 0 }} whileHover={{ opacity: 1 }}
+                  style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 60%)',
+                    padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                  }}
+                >
+                  {g.title && <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff' }}>{g.title}</div>}
+                  {g.description && <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.75)', marginTop: 2 }}>{g.description}</div>}
+                </motion.div>
+              )}
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* Lightbox */}
+      {lightbox.open && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          onClick={() => setLightbox(s => ({ ...s, open: false }))}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', cursor: 'zoom-out' }}
+        >
+          <motion.div initial={{ scale: 0.85 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <img src={lightbox.image} alt={lightbox.title} style={{ maxWidth: '100%', maxHeight: '88vh', borderRadius: 12, objectFit: 'contain', display: 'block' }} />
+            {lightbox.title && (
+              <div style={{ textAlign: 'center', marginTop: 12 }}>
+                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff' }}>{lightbox.title}</div>
+                {lightbox.desc && <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.65)', marginTop: 4 }}>{lightbox.desc}</div>}
+              </div>
+            )}
+            <button onClick={() => setLightbox(s => ({ ...s, open: false }))} style={{ position: 'absolute', top: 12, right: 12, width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', border: 'none', color: '#fff', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="bi bi-x-lg" />
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </section>
+  );
+}
+
+// ── Contact ───────────────────────────────────────────────
+function ContactSec({ contacts, resume }: { contacts: Contact[]; resume: { file_url: string | null } | null }) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [sending, setSending] = useState(false);
+  const [fb, setFb] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSending(true);
+    try {
+      const r = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sender_name: form.name, sender_email: form.email, subject: form.subject, body: form.message }),
+      });
+      setFb(r.ok ? { ok: true, msg: 'Message sent!' } : { ok: false, msg: 'Failed. Try again.' });
+      if (r.ok) setForm({ name: '', email: '', subject: '', message: '' });
+    } catch { setFb({ ok: false, msg: 'An error occurred.' }); }
+    setSending(false);
+    setTimeout(() => setFb(null), 3000);
+  };
+
+  const displayedContacts = contacts.filter(c => c.value && c.key !== 'website');
+
+  const inpStyle: React.CSSProperties = {
+    width: '100%', padding: '11px 14px',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid var(--admin-border)',
+    borderRadius: 8, color: 'var(--admin-text-primary)',
+    fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none',
+  };
+
+  return (
+    <section id="contact" style={{ padding: '6rem 2rem', background: 'var(--admin-bg-primary)' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 420px', gap: 64, alignItems: 'start' }} className="contact-grid-v2">
+
+          {/* ── Left: big text ── */}
+          <div>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--admin-text-muted)', marginBottom: 20 }}>
+              Get In Touch
+            </div>
+
+            {/* Giant heading */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ duration: 0.7 }}
+            >
+              {["LET'S", 'WORK', 'TOGETHER'].map((word, i) => (
+                <div key={word} style={{
+                  fontSize: 'clamp(3.5rem,9vw,7rem)', fontWeight: 900,
+                  color: i === 1 ? 'transparent' : 'var(--admin-text-primary)',
+                  WebkitTextStroke: i === 1 ? '2px var(--admin-text-primary)' : undefined,
+                  letterSpacing: '-0.03em', lineHeight: 1, display: 'block',
+                }}>
+                  {word}
+                </div>
+              ))}
+            </motion.div>
+
+            {/* Tagline */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ delay: 0.2, duration: 0.5 }}
+              style={{ marginTop: 32 }}
+            >
+              <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--admin-text-primary)', marginBottom: 8 }}>
+                Looking for a dedicated Social Media Manager & VA?
+              </p>
+              <p style={{ fontSize: '0.9rem', color: 'var(--admin-text-secondary)', lineHeight: 1.7, maxWidth: 420 }}>
+                I'm open to opportunities where I can help grow your brand, manage your content, and streamline your digital operations.
+              </p>
+            </motion.div>
+
+            {/* Download Resume */}
+            {resume?.file_url && (
+              <motion.a
+                href={resume.file_url} target="_blank" rel="noreferrer" download
+                initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }} transition={{ delay: 0.3, duration: 0.5 }}
+                whileHover={{ scale: 1.03 }}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 10,
+                  marginTop: 32, padding: '13px 28px',
+                  border: '1px solid var(--admin-border)',
+                  borderRadius: 99, color: 'var(--admin-text-primary)',
+                  textDecoration: 'none', fontSize: '0.82rem',
+                  fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                  transition: 'border-color 0.2s',
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--admin-accent)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--admin-border)'; }}
+              >
+                Download Resume →
+              </motion.a>
+            )}
+          </div>
+
+          {/* ── Right: contact cards + CTA ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* Contact link cards */}
+            {displayedContacts.map((c, i) => (
+              <motion.a
+                key={c.key}
+                href={c.key === 'email' ? `mailto:${c.value}` : c.value}
+                target="_blank" rel="noreferrer"
+                initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }} transition={{ delay: i * 0.07, duration: 0.4 }}
+                whileHover={{ borderColor: 'var(--admin-accent)', x: 4 }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '1rem 1.25rem',
+                  background: 'var(--admin-card)',
+                  border: '1px solid var(--admin-border)',
+                  borderRadius: 14, textDecoration: 'none',
+                  position: 'relative',
+                }}
+              >
+                {/* Number */}
+                <span style={{
+                  position: 'absolute', top: 10, right: 14,
+                  fontSize: '0.65rem', fontWeight: 700,
+                  color: 'var(--admin-text-muted)', letterSpacing: '0.05em',
+                }}>
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+
+                {/* Icon */}
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+                  background: 'rgba(59,130,246,0.08)',
+                  border: '1px solid rgba(59,130,246,0.15)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <i className={`bi ${socialIconMap[c.key] || 'bi-link-45deg'}`} style={{ fontSize: 18, color: 'var(--admin-accent)' }} />
+                </div>
+
+                {/* Label + value */}
+                <div>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--admin-text-muted)', marginBottom: 2 }}>
+                    {c.label}
+                  </div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--admin-text-primary)' }}>
+                    {c.value}
+                  </div>
+                </div>
+
+                {/* External icon */}
+                {c.key !== 'email' && c.key !== 'phone' && (
+                  <i className="bi bi-box-arrow-up-right" style={{ fontSize: 12, color: 'var(--admin-text-muted)', marginLeft: 'auto' }} />
+                )}
+              </motion.a>
+            ))}
+
+            {/* Send Message CTA */}
+            <motion.button
+              onClick={() => setShowForm(s => !s)}
+              initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ delay: 0.3, duration: 0.5 }}
+              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              style={{
+                marginTop: 8, padding: '16px',
+                background: 'var(--admin-accent)', color: '#fff',
+                border: 'none', borderRadius: 14, cursor: 'pointer',
+                fontSize: '0.88rem', fontWeight: 800,
+                letterSpacing: '0.08em', textTransform: 'uppercase',
+                fontFamily: 'inherit',
+              }}
+            >
+              {showForm ? 'Close Form' : 'Send Me a Message →'}
+            </motion.button>
+
+            {/* Inline message form */}
+            {showForm && (
+              <motion.form
+                onSubmit={submit}
+                initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}
+              >
+                <input type="text" placeholder="Your Name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required style={inpStyle} />
+                <input type="email" placeholder="Your Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required style={inpStyle} />
+                <input type="text" placeholder="Subject" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} style={inpStyle} />
+                <textarea placeholder="Your Message" value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} required rows={4} style={{ ...inpStyle, resize: 'vertical' as const }} />
+                {fb && (
+                  <div style={{ padding: '10px 14px', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600, background: fb.ok ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)', color: fb.ok ? '#4ade80' : '#f87171', border: `1px solid ${fb.ok ? '#4ade80' : '#f87171'}` }}>
+                    {fb.msg}
+                  </div>
+                )}
+                <motion.button type="submit" disabled={sending} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  style={{ padding: '12px', background: 'var(--admin-accent)', color: '#fff', border: 'none', borderRadius: 10, fontSize: '0.9rem', fontWeight: 700, cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.7 : 1, fontFamily: 'inherit' }}>
+                  {sending ? 'Sending…' : 'Send Message'}
+                </motion.button>
+              </motion.form>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @media(max-width: 768px) {
+          .contact-grid-v2 { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </section>
   );
 }
 
 // ── Main Page ────────────────────────────────────────────
 export default function Page() {
-  const [data,setData]=useState<{hero:Hero;profile:Profile;contacts:Contact[];resume:Resume|null;services:Service[];skills:Skill[];tools:Skill[];projects:Project[];gallery:GalleryItem[];testimonials:Testimonial[];certs:Certification[]}|null>(null);
-  const [lb,setLb]=useState<LightboxState>({open:false,image:'',title:'',desc:''});
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [resume, setResume] = useState<{ file_url: string | null } | null>(null);
+  const [certs, setCerts] = useState<Certification[]>([]);
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(()=>{
-    const safe = (p: Promise<Response>) => p.then(r=>r.ok?r.json():null).catch(()=>null);
+  useEffect(() => {
+    const safe = (p: Promise<Response>) => p.then(r => r.ok ? r.json() : null).catch(() => null);
     Promise.all([
-      safe(fetch('/api/content/hero')),
       safe(fetch('/api/profile')),
-      safe(fetch('/api/profile/contacts')),
-      safe(fetch('/api/profile/resume')),
+      safe(fetch('/api/projects')),
       safe(fetch('/api/services')),
       safe(fetch('/api/skills')),
-      safe(fetch('/api/tools')),
-      safe(fetch('/api/projects')),
-      safe(fetch('/api/gallery')),
-      safe(fetch('/api/testimonials')),
+      safe(fetch('/api/profile/contacts')),
+      safe(fetch('/api/profile/resume')),
       safe(fetch('/api/certifications')),
-    ]).then(([hero,profile,contacts,resume,services,skills,tools,projects,gallery,testimonials,certs])=>{
-      setData({
-        hero: hero ?? {headline:'',subheadline:'',cta_text:'',cta_url:'',bg_image_url:null},
-        profile: profile ?? {full_name:'',tagline:'',bio:'',avatar_url:null,location:'',years_experience:0},
-        contacts: contacts ?? [],
-        resume: resume ?? null,
-        services: services ?? [],
-        skills: skills ?? [],
-        tools: tools ?? [],
-        projects: projects ?? [],
-        gallery: gallery ?? [],
-        testimonials: (testimonials ?? []).filter((t:Testimonial)=>t.is_published),
-        certs: certs ?? [],
-      });
+      safe(fetch('/api/gallery')),
+    ]).then(([prof, projs, svcs, skls, ctcts, res, certsData, galleryData]) => {
+      setProfile(prof);
+      setProjects(projs ?? []);
+      setServices(svcs ?? []);
+      setSkills(skls ?? []);
+      setContacts(ctcts ?? []);
+      setResume(res ?? null);
+      setCerts(certsData ?? []);
+      setGallery(galleryData ?? []);
+      setLoading(false);
     });
-  },[]);
+  }, []);
 
-  if(!data) return (
-    <>
-      <style>{`
-        @keyframes plsPop{from{opacity:0;transform:scale(0.92) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
-        @keyframes plsSlide{0%{transform:translateX(-100%)}50%{transform:translateX(200%)}100%{transform:translateX(200%)}}
-      `}</style>
-      <div style={{position:'fixed',inset:0,zIndex:9999,background:'var(--admin-bg-primary)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-        <div style={{background:'var(--admin-card)',border:'1px solid var(--admin-border)',borderRadius:20,padding:'2rem 2.5rem',display:'flex',flexDirection:'column',alignItems:'center',gap:'0.75rem',boxShadow:'var(--admin-shadow)',animation:'plsPop 0.3s ease',minWidth:220}}>
-          <img src="/logo.png" alt="MakiSync" style={{width:64,height:64,objectFit:'contain',borderRadius:14}} onError={e=>{(e.target as HTMLImageElement).style.display='none';}}/>
-          <div style={{fontSize:'1.4rem',fontWeight:800,color:'var(--admin-text-primary)',letterSpacing:'-0.02em'}}>MakiSync</div>
-          <div style={{fontSize:'0.82rem',color:'var(--admin-text-muted)'}}>Loading portfolio…</div>
-          <div style={{width:180,height:4,borderRadius:99,background:'var(--admin-border)',overflow:'hidden',marginTop:'0.25rem'}}>
-            <div style={{width:'45%',height:'100%',borderRadius:99,background:'linear-gradient(90deg,#3b82f6,#6366f1)',animation:'plsSlide 1.2s infinite ease-in-out'}}/>
+  if (loading) {
+    return (
+      <>
+        <style>{`
+          @keyframes plsPop { from { opacity:0; transform:scale(0.92) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+          @keyframes plsSlide { 0% { transform:translateX(-100%); } 50% { transform:translateX(200%); } 100% { transform:translateX(200%); } }
+        `}</style>
+        <div style={{ position:'fixed', inset:0, zIndex:9999, background:'var(--admin-bg-primary)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'var(--admin-card)', border:'1px solid var(--admin-border)', borderRadius:20, padding:'2rem 2.5rem', display:'flex', flexDirection:'column', alignItems:'center', gap:'0.75rem', boxShadow:'var(--admin-shadow)', animation:'plsPop 0.3s ease', minWidth:220 }}>
+            <img src="/logo.png" alt="MakiSync" style={{ width:64, height:64, objectFit:'contain', borderRadius:14 }} onError={e=>{(e.target as HTMLImageElement).style.display='none';}} />
+            <div style={{ fontSize:'1.4rem', fontWeight:800, color:'var(--admin-text-primary)', letterSpacing:'-0.02em' }}>MakiSync</div>
+            <div style={{ fontSize:'0.82rem', color:'var(--admin-text-muted)' }}>Loading portfolio…</div>
+            <div style={{ width:180, height:4, borderRadius:99, background:'var(--admin-border)', overflow:'hidden', marginTop:'0.25rem' }}>
+              <div style={{ width:'45%', height:'100%', borderRadius:99, background:'linear-gradient(90deg,#3b82f6,#6366f1)', animation:'plsSlide 1.2s infinite ease-in-out' }} />
+            </div>
           </div>
         </div>
-      </div>
-    </>
-  );
+      </>
+    );
+  }
 
-  const {hero,profile,contacts,resume,services,skills,tools,projects,gallery,testimonials,certs}=data;
+  const publishedProjects = projects.filter(p => p.status === 'published');
 
   return (
-    <main style={{position:'relative',overflow:'hidden'}}>
-      <DotCanvas/>
-      <Navbar/>
-      <HeroSec data={hero} profile={profile}/>
-      <AboutSec profile={profile} contacts={contacts} resume={resume}/>
-      {services.length>0&&<ServicesSec items={services}/>}
-      {skills.length>0&&<SkillGrid id="skills" label="Skills" title="Technical Skills" items={skills}/>}
-      {tools.length>0&&<SkillGrid id="tools" label="Tools" title="Tools I Use" items={tools}/>}
-      {projects.length>0&&<ProjectsSec items={projects} lb={setLb}/>}
-      {gallery.length>0&&<GallerySec items={gallery} lb={setLb}/>}
-      {testimonials.length>0&&<TestimonialsSec items={testimonials}/>}
-      <ResumeSec resume={resume}/>
-      {certs.length>0&&<CertsSec items={certs} lb={setLb}/>}
-      <ContactSec contacts={contacts}/>
-      <Footer siteName={hero.headline?'MakiSync':profile.full_name||'MakiSync'} contacts={contacts}/>
-      <Lightbox state={lb} onClose={()=>setLb(s=>({...s,open:false}))}/>
-    </main>
+    <>
+      <style>{`
+        :root { --nav-bg: rgba(10,15,26,0.72); --stroke-color: rgba(255,255,255,0.25); }
+        :root[data-theme="light"] { --nav-bg: rgba(240,244,255,0.72); --stroke-color: rgba(0,0,0,0.75); }
+
+        /* v2-only: semi-transparent section backgrounds so dot canvas shows through */
+        .v2-page { --admin-bg-primary: rgba(10,15,26,0.92); --admin-bg-secondary: rgba(15,23,36,0.92); --admin-card: rgba(16,23,34,0.88); }
+        :root[data-theme="light"] .v2-page { --admin-bg-primary: rgba(240,244,255,0.88); --admin-bg-secondary: rgba(232,237,248,0.88); --admin-card: rgba(255,255,255,0.88); }
+      `}</style>
+      <Navbar name={profile?.full_name || 'MakiSync'} />
+      <DotCanvas />
+      <main className="v2-page" style={{ position: 'relative', zIndex: 1, isolation: 'isolate' }}>
+        <HeroSection profile={profile} />
+        <WorkGallery projects={projects} />
+        <CapabilitiesSec services={services} skills={skills} />
+        {profile && (
+          <AboutSec
+            profile={profile}
+            contacts={contacts}
+            resume={resume}
+            projectCount={publishedProjects.length}
+            certCount={certs.length}
+          />
+        )}
+        <RecognitionSec gallery={gallery} certs={certs} />
+        <GallerySec gallery={gallery} />
+        <ContactSec contacts={contacts} resume={resume} />
+      </main>
+    </>
   );
 }
