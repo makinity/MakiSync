@@ -72,7 +72,7 @@ function DotCanvas() {
     const canvas = ref.current; if (!canvas) return;
     if (window.innerWidth < 768) return;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
-    const SPACING = 28, R = 1.8, REPEL = 130, LERP = 0.08;
+    const SPACING = 28, R = 1.8, REPEL = 200, LERP = 0.08;
     type Dot = { rx: number; ry: number; cx: number; cy: number; vx: number; vy: number; lit: number };
     let dots: Dot[] = [], mouse = { x: -9999, y: -9999 }, raf: number;
 
@@ -96,9 +96,9 @@ function DotCanvas() {
           const f = (REPEL - dist) / REPEL;
           d.vx += (dx / dist) * f * 3;
           d.vy += (dy / dist) * f * 3;
-          d.lit = Math.max(d.lit, 1 - dist / REPEL); // glow intensity
+          d.lit = Math.max(d.lit, Math.pow(1 - dist / REPEL, 1.5)); // stronger glow near cursor
         } else {
-          d.lit *= 0.92; // fade out
+          d.lit *= 0.90; // fade out
         }
 
         d.cx += (d.rx - d.cx) * LERP + d.vx;
@@ -115,7 +115,7 @@ function DotCanvas() {
           const b = Math.round(base[2] + (accent[2] - base[2]) * d.lit);
           const a = (base[3] as number) + (0.8 - (base[3] as number)) * d.lit;
           ctx.fillStyle = `rgba(${r},${g},${b},${a})`;
-          const radius = R + d.lit * 1.5; // dots grow slightly when lit
+          const radius = R + d.lit * 2.5; // dots grow more when lit
           ctx.beginPath(); ctx.arc(d.cx, d.cy, radius, 0, Math.PI * 2); ctx.fill();
         } else {
           ctx.fillStyle = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
@@ -140,7 +140,7 @@ function DotCanvas() {
       window.removeEventListener('mouseleave', onLeave);
     };
   }, []);
-  return <canvas ref={ref} style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none' }} />;
+  return <canvas ref={ref} style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: 0, pointerEvents: 'none' }} />;
 }
 
 // ── Marquee Text (scrolling stroke letters behind photo) ─
@@ -1574,10 +1574,14 @@ export default function MainV2Page() {
       <style>{`
         :root { --nav-bg: rgba(10,15,26,0.72); --stroke-color: rgba(255,255,255,0.25); }
         :root[data-theme="light"] { --nav-bg: rgba(240,244,255,0.72); --stroke-color: rgba(0,0,0,0.75); }
+
+        /* v2-only: semi-transparent section backgrounds so dot canvas shows through */
+        .v2-page { --admin-bg-primary: rgba(10,15,26,0.92); --admin-bg-secondary: rgba(15,23,36,0.92); --admin-card: rgba(16,23,34,0.88); }
+        :root[data-theme="light"] .v2-page { --admin-bg-primary: rgba(240,244,255,0.88); --admin-bg-secondary: rgba(232,237,248,0.88); --admin-card: rgba(255,255,255,0.88); }
       `}</style>
       <Navbar name={profile?.full_name || 'MakiSync'} />
       <DotCanvas />
-      <main style={{ position: 'relative', zIndex: 1 }}>
+      <main className="v2-page" style={{ position: 'relative', zIndex: 1, isolation: 'isolate' }}>
         <HeroSection profile={profile} />
         <WorkGallery projects={projects} />
         <CapabilitiesSec services={services} skills={skills} />
