@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { href: '/admin/content',        label: 'Content',        icon: 'bi-file-earmark-richtext-fill' },
   { href: '/admin/messages',       label: 'Messages',       icon: 'bi-envelope-fill' },
   { href: '/admin/jobhunter',      label: 'JobHunter AI',   icon: 'bi-search-heart' },
+  { href: '/admin/resume-fixer',   label: 'Resume Fixer AI', icon: 'bi-file-earmark-check-fill' },
   { href: '/admin/settings',       label: 'Settings',       icon: 'bi-gear-fill' },
 ];
 

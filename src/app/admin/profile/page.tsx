@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import AppLayout from '@/layouts/AppLayout';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 
@@ -188,6 +189,20 @@ function ResumeTab() {
   return (
     <div style={cardStyle}>
       <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--admin-text-primary)', marginBottom: '1rem' }}>Resume</div>
+
+      {/* Resume Fixer AI callout */}
+      <Link href="/admin/resume-fixer" style={{
+        display: 'flex', alignItems: 'center', gap: '0.6rem',
+        padding: '0.75rem 1rem', borderRadius: 10, marginBottom: '1rem',
+        background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
+        color: 'var(--admin-accent)', fontSize: '0.82rem', fontWeight: 600,
+        textDecoration: 'none',
+      }}>
+        <i className="bi bi-stars" style={{ fontSize: '1rem', flexShrink: 0 }} />
+        <span>Want to tailor this resume for a specific job? <u>Open Resume Fixer AI</u></span>
+        <i className="bi bi-arrow-right" style={{ marginLeft: 'auto', flexShrink: 0 }} />
+      </Link>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div>
           <label style={labelStyle}>Title</label>
